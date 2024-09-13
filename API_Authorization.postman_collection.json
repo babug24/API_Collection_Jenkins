@@ -1,0 +1,194 @@
+{
+	"info": {
+		"_postman_id": "b2624e9e-f490-40df-bd51-bacf3e8135ef",
+		"name": "API_Authorization",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30645682"
+	},
+	"item": [
+		{
+			"name": "https://api.github.com/user/repos",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "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",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://api.github.com/user/repos",
+					"protocol": "https",
+					"host": [
+						"api",
+						"github",
+						"com"
+					],
+					"path": [
+						"user",
+						"repos"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "https://docs.github.com/rest/repos/repos#list-repositories-for-the-authenticated-user",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "oauth2",
+					"oauth2": [
+						{
+							"key": "addTokenTo",
+							"value": "header",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://docs.github.com/rest/repos/repos#list-repositories-for-the-authenticated-user",
+					"protocol": "https",
+					"host": [
+						"docs",
+						"github",
+						"com"
+					],
+					"path": [
+						"rest",
+						"repos",
+						"repos"
+					],
+					"hash": "list-repositories-for-the-authenticated-user"
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Jira_Basic_Auth",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 401\", function () {\r",
+							"    pm.response.to.have.status(401);\r",
+							"});\r",
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{API_Token}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "babug24@gmail.com",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://babug24.atlassian.net/rest/api/3/instance/license",
+					"protocol": "https",
+					"host": [
+						"babug24",
+						"atlassian",
+						"net"
+					],
+					"path": [
+						"rest",
+						"api",
+						"3",
+						"instance",
+						"license"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "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",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "jira_token",
+			"value": "ATATT3xFfGF0UIz774354HFc2F08mKRUTnAtTpGc34omibgttJ6fSe1HKHZtWewoPmZ30CiYa5t4lpWwDLCGjgMi09mk98XdLJq6B7EDL8IPPnQAXpaKSyimDkZsi_VDIqRsAS2kT"
+		}
+	]
+}

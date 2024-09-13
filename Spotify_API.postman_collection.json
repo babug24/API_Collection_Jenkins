@@ -1,0 +1,120 @@
+{
+	"info": {
+		"_postman_id": "16c7860a-4e3d-4826-af9e-7acca493e33f",
+		"name": "Spotify_API",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "30645682"
+	},
+	"item": [
+		{
+			"name": "https://api.spotify.com/",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer 1POdFZRZbvb...qqillRxMr2z"
+					}
+				],
+				"url": {
+					"raw": "https://api.spotify.com/?lang=en&charSet=utf-8",
+					"protocol": "https",
+					"host": [
+						"api",
+						"spotify",
+						"com"
+					],
+					"path": [
+						""
+					],
+					"query": [
+						{
+							"key": "lang",
+							"value": "en"
+						},
+						{
+							"key": "charSet",
+							"value": "utf-8"
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "https://developer-assets.spotifycdn.com/_next/static/css/cdb71bebc2664d8e.css",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {\r",
+							"    pm.response.to.have.status(200);\r",
+							"});"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "https://developer-assets.spotifycdn.com/_next/static/css/cdb71bebc2664d8e.css",
+					"protocol": "https",
+					"host": [
+						"developer-assets",
+						"spotifycdn",
+						"com"
+					],
+					"path": [
+						"_next",
+						"static",
+						"css",
+						"cdb71bebc2664d8e.css"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					"pm.test(\"Status code is 200\", function () {\r",
+					"    pm.response.to.have.status(200);\r",
+					"});"
+				]
+			}
+		}
+	]
+}
