@@ -1,0 +1,426 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>En Español Validator Help</title>
+  <style>
+    :root {
+      --bg: #f6f8fb;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #4b5563;
+      --line: #dfe3ea;
+      --primary: #0f4c81;
+      --primary-soft: #eaf3ff;
+      --pass: #166534;
+      --pass-bg: #ecfdf5;
+      --fail: #991b1b;
+      --fail-bg: #fef2f2;
+      --skip: #92400e;
+      --skip-bg: #fff7ed;
+      --code: #111827;
+      --code-bg: #f3f4f6;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 32px auto;
+      padding: 0 24px 48px;
+    }
+
+    .header {
+      background: linear-gradient(135deg, var(--primary), #1d6bb0);
+      color: white;
+      border-radius: 14px;
+      padding: 28px 30px;
+      box-shadow: 0 8px 24px rgba(15, 76, 129, 0.25);
+      margin-bottom: 24px;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: 2.1rem;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: rgba(255,255,255,0.9);
+      font-size: 1.02rem;
+    }
+
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 22px 24px;
+      margin-bottom: 22px;
+      box-shadow: 0 2px 8px rgba(17, 24, 39, 0.04);
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      margin-top: 0;
+      margin-bottom: 12px;
+      color: var(--primary);
+    }
+
+    h3 {
+      font-size: 1.08rem;
+      margin-top: 20px;
+      margin-bottom: 8px;
+      color: var(--ink);
+    }
+
+    p, li {
+      color: var(--muted);
+    }
+
+    ul, ol {
+      margin-top: 8px;
+      padding-left: 20px;
+    }
+
+    code, pre {
+      font-family: Consolas, "Courier New", monospace;
+      background: var(--code-bg);
+      color: var(--code);
+    }
+
+    code {
+      padding: 2px 6px;
+      border-radius: 5px;
+      font-size: 0.96em;
+    }
+
+    pre {
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      overflow-x: auto;
+      white-space: pre-wrap;
+    }
+
+    .status-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .status-box {
+      border-radius: 10px;
+      padding: 12px 15px;
+      border: 1px solid var(--line);
+    }
+
+    .status-box.pass {
+      background: var(--pass-bg);
+      border-color: rgba(22, 101, 52, 0.2);
+      color: var(--pass);
+    }
+
+    .status-box.fail {
+      background: var(--fail-bg);
+      border-color: rgba(153, 27, 27, 0.2);
+      color: var(--fail);
+    }
+
+    .status-box.skip {
+      background: var(--skip-bg);
+      border-color: rgba(146, 64, 14, 0.25);
+      color: var(--skip);
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      background: var(--primary-soft);
+      color: var(--primary);
+      padding: 4px 8px;
+      border-radius: 999px;
+      margin-bottom: 10px;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    @media (max-width: 760px) {
+      .two-col {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>En Español Validator Help</h1>
+      <p class="subtitle">Validation guide for the Nationwide Spanish‑language page checker and report generator.</p>
+    </header>
+
+    <!-- Prerequisites & Installation -->
+    <section class="card">
+      <div class="badge">Setup</div>
+      <h2>Prerequisites &amp; Installation</h2>
+      <p><strong>Before you begin, ensure you have:</strong></p>
+      <ul>
+        <li><a href="https://nodejs.org/" target="_blank">Node.js</a> (version 14 or later) installed.</li>
+        <li>npm (comes with Node.js) – used to install dependencies.</li>
+        <li>A terminal / command prompt to run the script.</li>
+      </ul>
+      <h3>Install dependencies</h3>
+      <p>Navigate to the project directory and run:</p>
+      <pre>npm install playwright exceljs csv-parse franc</pre>
+      <p>
+        Playwright will download the required browser binaries during installation. This step may take a few minutes.
+      </p>
+      <p>
+        <strong>Note:</strong> The script assumes that the core library files (<code>espanol-validator-core.js</code>) are located in a <code>lib/</code> folder relative to the runner. If you have a different structure, adjust the <code>require</code> paths accordingly.
+      </p>
+    </section>
+
+    <!-- Overview -->
+    <section class="card">
+      <div class="badge">Overview</div>
+      <h2>What this tool does</h2>
+      <p>
+        This validator checks whether a page or a list of pages contains a valid Spanish-language experience. It detects whether a page has an <strong>En Español</strong> language switch link, follows that link, and validates the resulting page content <strong>exactly</strong> at the URL reached. It then produces JSON, HTML, and Excel reports.
+      </p>
+      <p>
+        The implementation in <code>Updated_espanol-validator-runner.js</code> is designed to handle real-world scenarios such as direct Spanish URLs, unavailable pages, missing language links, and cookie banners.
+      </p>
+      <p>
+        <strong>This version uses a strict validation policy:</strong> a page is only marked <strong>PASS</strong> if the exact target page (the one reached via the “En Español” link) itself is properly translated. No fallback or override is applied.
+      </p>
+    </section>
+
+    <!-- Core functionality -->
+    <section class="card">
+      <div class="badge">Core functionality</div>
+      <h2>Key features</h2>
+      <ul>
+        <li>Reads URLs from a CSV file or accepts a direct URL argument.</li>
+        <li>Detects direct Spanish URLs such as <code>espanol.nationwide.com</code> and <code>/es/</code> or <code>/espanol/</code> paths.</li>
+        <li>Finds an <strong>En Español</strong> link using text, hreflang, lang attributes, and fallback heuristics.</li>
+        <li>Identifies if the current page is already Spanish using HTML language metadata, language detection, and keyword checks.</li>
+        <li>Skips pages that are unavailable or display error templates such as <strong>Application Unavailable</strong>.</li>
+        <li>Validates translated content using Spanish stopwords, keywords, and language detection.</li>
+        <li>Creates reports in JSON, HTML, and Excel formats.</li>
+        <li>Supports cookie banner dismissal for common site patterns.</li>
+      </ul>
+    </section>
+
+    <!-- Validation flow (no fallback) -->
+    <section class="card">
+      <div class="badge">How it works</div>
+      <h2>Validation flow</h2>
+      <ol>
+        <li>Read the target URL(s) from the command line or the default <code>url.csv</code> file.</li>
+        <li>Open the page in headless Playwright.</li>
+        <li>Check whether the page is unavailable or is a known error page.</li>
+        <li>Look for an <strong>En Español</strong> link or other language-switch indicator.</li>
+        <li>If the current page is already Spanish, validate it directly.</li>
+        <li>If a switch link exists, click it and validate the resulting page.</li>
+        <li><strong>No fallback step:</strong> the page reached via the link <strong>must</strong> validate as Spanish, otherwise the test is marked <strong>FAIL</strong>.</li>
+        <li>Save the generated result summary and reports.</li>
+      </ol>
+    </section>
+
+    <!-- Validation engine decision tree -->
+    <section class="card">
+      <div class="badge">Validation engine</div>
+      <h2>How the script decides PASS / FAIL / SKIP</h2>
+      <p>The validation logic follows a deterministic decision tree. Each page is evaluated as follows:</p>
+      <ol>
+        <li><strong>Unavailable check</strong> – if the HTTP status is 4xx/5xx or the page contains “application unavailable” text, the test is <strong>SKIPPED</strong> (to avoid false negatives).</li>
+        <li><strong>Direct Spanish detection</strong> – if the URL itself indicates Spanish (<code>espanol</code> host, <code>/es/</code> path, or <code>lang=es</code> query param), the page is assumed to be Spanish and validated immediately.</li>
+        <li><strong>“En Español” link search</strong> – the script looks for a clickable link using multiple selectors and text patterns. If none is found:
+          <ul>
+            <li>If the current page is already Spanish (detected via <code>&lt;html lang="es"&gt;</code> or language detection), it is validated directly.</li>
+            <li>Otherwise, the test is <strong>SKIPPED</strong> with a note that no switch link exists.</li>
+          </ul>
+        </li>
+        <li><strong>Click &amp; validate</strong> – the link is clicked, and the resulting page is checked for Spanish content using:
+          <ul>
+            <li>Presence of <code>&lt;html lang="es"&gt;</code></li>
+            <li><strong>Language detection</strong> via the <code>franc</code> library on the page body (first 1000 characters)</li>
+            <li><strong>Keyword heuristics</strong> (fallback) – common Spanish terms like “seguro”, “servicios”, “contacto”, etc.</li>
+          </ul>
+        </li>
+        <li><strong>Final status</strong> – if Spanish is confirmed, the test is <strong>PASS</strong>; otherwise, it is <strong>FAIL</strong> with appropriate error details.</li>
+      </ol>
+      <p>
+        <strong>Note:</strong> The script uses a combination of signals to reduce false positives. The keyword list is intentionally small to avoid matching common English words that appear in Spanish contexts.
+      </p>
+    </section>
+
+    <!-- Usage -->
+    <section class="card">
+      <div class="badge">Usage</div>
+      <h2>Run the validator</h2>
+      <div class="two-col">
+        <div>
+          <h3>Single URL</h3>
+          <pre>node Updated_espanol-validator-runner.js "https://www.nationwide.com/"</pre>
+        </div>
+        <div>
+          <h3>CSV file default</h3>
+          <pre>node Updated_espanol-validator-runner.js</pre>
+        </div>
+      </div>
+      <p>
+        If no URL argument is provided, the script checks for a default file named <code>url.csv</code> in the project root. If the CSV exists, it reads URLs from it. If not, it falls back to a default page such as <code>https://www.nationwide.com/</code>.
+      </p>
+    </section>
+
+    <!-- CSV format -->
+    <section class="card">
+      <div class="badge">CSV format</div>
+      <h2>File format for <code>url.csv</code></h2>
+      <p>The CSV is expected to be a simple list of URLs, ideally with a header named <code>url</code>.</p>
+      <pre>url
+https://www.nationwide.com/
+https://www.nationwide.com/agents/
+https://espanol.nationwide.com/personal/insurance/life/permanent/whole/</pre>
+      <p>
+        The script handles quoted entries and multi-column CSV files by looking for a column named <code>url</code> or falling back to the first column when needed.
+      </p>
+    </section>
+
+    <!-- What counts as Spanish -->
+    <section class="card">
+      <div class="badge">Validation logic</div>
+      <h2>What counts as Spanish?</h2>
+      <p>The validator uses a layered approach to determine whether a page is Spanish:</p>
+      <ul>
+        <li><strong>Direct URL detection:</strong> URLs with <code>espanol</code> in the host or <code>/es/</code>, <code>/espanol/</code>, or <code>lang=es</code> patterns.</li>
+        <li><strong>HTML metadata:</strong> <code>lang="es"</code> or similar Spanish language attributes.</li>
+        <li><strong>Language detection:</strong> the <code>franc</code> library checks the page body text.</li>
+        <li><strong>Keyword heuristics:</strong> common Spanish terms such as <code>seguro</code>, <code>servicios</code>, <code>contacto</code>, <code>privacidad</code>, <code>vida</code>, and <code>español</code>.</li>
+      </ul>
+      <p>
+        If Spanish is detected, the script validates the page. Otherwise, it marks the page as <strong>FAIL</strong> (or <strong>SKIPPED</strong> if no link was found).
+      </p>
+    </section>
+
+    <!-- Status values -->
+    <section class="card">
+      <div class="badge">Status values</div>
+      <h2>Result states</h2>
+      <div class="status-list">
+        <div class="status-box pass">
+          <strong>PASS</strong><br />
+          The “En Español” link led to a page that is <strong>itself</strong> fully translated into Spanish.
+        </div>
+        <div class="status-box fail">
+          <strong>FAIL</strong><br />
+          The page was reachable but did not validate as Spanish content.
+        </div>
+        <div class="status-box skip">
+          <strong>SKIPPED</strong><br />
+          The page was unavailable, had no usable language-switch link, or was not testable.
+        </div>
+      </div>
+      <p>
+        The script also reports <strong>Application Unavailable</strong> pages as skipped, which prevents a site outage from being counted as a real translation failure.
+      </p>
+    </section>
+
+    <!-- Important validation rules -->
+    <section class="card">
+      <div class="badge">Validation details</div>
+      <h2>Important validation rules</h2>
+      <ul>
+        <li>If the site returns an unavailable page template, the validator skips it with a skip status.</li>
+        <li>If no En Español link exists but the page itself is already Spanish, it validates the current page directly.</li>
+        <li>If a link is present and clickable, the validator opens the Spanish page and validates it.</li>
+        <li>Page navigation errors, click failures, and unexpected exceptions are reported as FAIL with context in the error message.</li>
+        <li><strong>Page Error tracking:</strong> when an En Español link exists and errors occur during click or page load, the error is captured in the "Page Error" column for root cause analysis.</li>
+        <li><strong>No fallback override:</strong> the page reached via the link is the <em>only</em> page evaluated for PASS/FAIL.</li>
+      </ul>
+    </section>
+
+    <!-- Output reports -->
+    <section class="card">
+      <div class="badge">Output reports</div>
+      <h2>Generated files</h2>
+      <p>After execution, the script writes reports into the <code>reports</code> folder.</p>
+      <ul>
+        <li><strong>JSON:</strong> includes the validation summary and raw result objects with all validation fields.</li>
+        <li><strong>HTML:</strong> a human-readable table with URL, link status, translation result, status, page error (if any), and validation details.</li>
+        <li><strong>Excel:</strong> workbook with the same result set for spreadsheet review.</li>
+      </ul>
+      <h3>Report columns</h3>
+      <ul>
+        <li><strong>URL:</strong> the target page URL</li>
+        <li><strong>En Español Element:</strong> Yes/No – whether an En Español link was detected</li>
+        <li><strong>En Español Link:</strong> the href of the Spanish version (if found)</li>
+        <li><strong>Spanish Translate:</strong> Yes/No – whether Spanish content was validated</li>
+        <li><strong>Status:</strong> PASS, FAIL, or SKIPPED</li>
+        <li><strong>Detection Method:</strong> which signal triggered Spanish detection (url, html-lang, hreflang, og-locale, franc, keyword, none)</li>
+        <li><strong>Page Error:</strong> error message if click or page load failed during Spanish page navigation</li>
+        <li><strong>Validation Details:</strong> full error or success message</li>
+      </ul>
+      <p>Summary values include:</p>
+      <pre>{
+  "total": 4,
+  "pass": 1,
+  "fail": 2,
+  "skip": 1,
+  "unavailable": 1
+}</pre>
+    </section>
+
+    <!-- Troubleshooting -->
+    <section class="card">
+      <div class="badge">Troubleshooting</div>
+      <h2>Common issues and fixes</h2>
+      <ul>
+        <li><strong>Page is marked SKIPPED:</strong> the target page is unavailable or not testable at the moment.</li>
+        <li><strong>Page is marked FAIL:</strong> the page loaded but no Spanish content or language indicators were detected. Check the "Validation Details" column for specifics.</li>
+        <li><strong>Page Error column shows "Click failed":</strong> the En Español link exists but could not be clicked. See the error message for details. This typically indicates a page structure issue or timing problem.</li>
+        <li><strong>Page Error column shows "Page load error":</strong> the Spanish page failed to load after clicking the link. Check the "Validation Details" column for the specific error.</li>
+        <li><strong>No En Español link found:</strong> the page may already be Spanish, or the site structure may not include a visible language switch.</li>
+        <li><strong>Cookie banner blocks interaction:</strong> the validator attempts a standard banner dismissal but some sites may still require custom selectors.</li>
+        <li><strong>CSV read issue:</strong> ensure the file contains a valid <code>url</code> header or a clean first-column list of URLs.</li>
+      </ul>
+    </section>
+
+    <!-- Project notes -->
+    <section class="card">
+      <div class="badge">Project notes</div>
+      <h2>Important implementation notes</h2>
+      <p>
+        This script relies on Playwright for browser automation, <code>csv-parse/sync</code> for CSV parsing, and <code>franc</code> for language detection. It is designed to preserve a practical balance between heuristic detection and real page validation.
+      </p>
+      <p>
+        The most robust behavior is to separate unavailable pages from genuine page failures. That avoids false negatives when a target site is temporarily down but still maintains strict validation of real Spanish content.
+      </p>
+      <p>
+        <strong>Strict mode:</strong> no fallback is applied. A PASS means the exact linked page is translated. This satisfies mission‑critical validation where every specific URL must work.
+      </p>
+      <p>
+        <strong>Page Error tracking:</strong> when an En Español link is found and detected, any errors during navigation (click failure or page load timeout) are captured in the report for detailed root cause analysis. This helps distinguish between translation issues and technical problems.
+      </p>
+      <p>
+        <strong>Report format:</strong> all reports (JSON, HTML, Excel) include the Page Error field, enabling consistent error tracking across different report formats for stakeholder review and debugging.
+      </p>
+    </section>
+  </div>
+</body>
+</html>

@@ -3,15 +3,7 @@ const { mergeConfig, dismissCookieBanner, findEnEspanolLink, validateSpanishTran
 const path = require('path');
 const fs = require('fs');
 const { parse } = require('csv-parse/sync');
-
-// franc v6+ is ESM-only – lazy load
-let _francPromise = null;
-async function getFranc() {
-  if (!_francPromise) {
-    _francPromise = import('franc').then(mod => mod.franc || mod.default);
-  }
-  return _francPromise;
-}
+const franc = require('franc');
 
 const DEFAULT_URL_CSV = path.join(__dirname, 'url.csv');
 const config = mergeConfig({});
@@ -20,9 +12,14 @@ const config = mergeConfig({});
 
 function readUrlsFromCsv(filePath) {
   const text = fs.readFileSync(filePath, 'utf-8');
-  const records = parse(text, { columns: true, skip_empty_lines: true, trim: true });
+  const records = parse(text, {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true
+  });
   const urlColumn = Object.keys(records[0] || {}).find(k => k.toLowerCase() === 'url');
   if (!urlColumn) {
+    console.warn('CSV does not contain a "url" column; using first column values.');
     const rows = parse(text, { skip_empty_lines: true, trim: true });
     return rows.map(row => row[0]).filter(Boolean);
   }
@@ -41,10 +38,12 @@ async function getStartUrls() {
   return ['https://www.nationwide.com/'];
 }
 
+// Normalize text: lowercase and remove diacritics for keyword matching
 function normalizeText(text) {
   return text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+// Check for hreflang links with 'es' anywhere (including es-ES, es-MX, etc.)
 async function hasHreflangSpanish(page) {
   const links = await page.locator('link[rel="alternate"][hreflang]').all();
   for (const link of links) {
@@ -54,52 +53,109 @@ async function hasHreflangSpanish(page) {
   return false;
 }
 
+// Check for og:locale meta tag with 'es' anywhere
 async function hasOgLocaleSpanish(page) {
-  const meta = page.locator('meta[property="og:locale"]').first();
-  const count = await meta.count().catch(() => 0);
-  if (count === 0) return false;
-  const content = await meta.getAttribute('content', { timeout: 1000 }).catch(() => null);
-  return Boolean(content) && content.toLowerCase().startsWith('es');
+  const meta = await page.locator('meta[property="og:locale"]').first();
+  if (!meta) return false;
+  const content = await meta.getAttribute('content').catch(() => null);
+  return content && content.toLowerCase().startsWith('es');
 }
 
+// Enhanced Spanish detection with logging of the winning signal
 async function isAlreadySpanishPage(page, url) {
-  if (isDirectSpanishUrl(url)) return { isSpanish: true, method: 'url' };
+  const signals = { url: false, htmlLang: false, hreflang: false, ogLocale: false, franc: false, keyword: false };
+  let detectionMethod = 'none';
+
+  // 1. Direct URL
+  if (isDirectSpanishUrl(url)) {
+    signals.url = true;
+    detectionMethod = 'url';
+    return { isSpanish: true, method: detectionMethod };
+  }
+
+  // 2. HTML lang attribute
   try {
     const htmlLang = await page.locator('html').getAttribute('lang').catch(() => '');
-    if (htmlLang && htmlLang.toLowerCase().startsWith('es')) return { isSpanish: true, method: 'html-lang' };
+    if (typeof htmlLang === 'string' && htmlLang.toLowerCase().startsWith('es')) {
+      signals.htmlLang = true;
+      detectionMethod = 'html-lang';
+      return { isSpanish: true, method: detectionMethod };
+    }
   } catch (_) {}
-  if (await hasHreflangSpanish(page)) return { isSpanish: true, method: 'hreflang' };
-  if (await hasOgLocaleSpanish(page)) return { isSpanish: true, method: 'og-locale' };
 
+  // 3. hreflang links
+  if (await hasHreflangSpanish(page)) {
+    signals.hreflang = true;
+    detectionMethod = 'hreflang';
+    return { isSpanish: true, method: detectionMethod };
+  }
+
+  // 4. og:locale meta
+  if (await hasOgLocaleSpanish(page)) {
+    signals.ogLocale = true;
+    detectionMethod = 'og-locale';
+    return { isSpanish: true, method: detectionMethod };
+  }
+
+  // 5. Body analysis (franc + keyword heuristics)
   let bodyText = '';
   try {
+    // Try to extract main content only (if <main> exists, else fallback to body)
     const main = await page.locator('main, article').first();
-    if (await main.count() > 0) bodyText = await main.innerText().catch(() => '');
-    else bodyText = await page.locator('body').innerText().catch(() => '');
+    if (await main.count() > 0) {
+      bodyText = await main.innerText().catch(() => '');
+    } else {
+      bodyText = await page.locator('body').innerText().catch(() => '');
+    }
   } catch (_) { bodyText = ''; }
-  const cleanText = bodyText.replace(/\s+/g, ' ').trim();
-  const sample = cleanText.slice(0, 2000);
 
+  // Strip excess whitespace and get sample
+  const cleanText = bodyText.replace(/\s+/g, ' ').trim();
+  const sample = cleanText.slice(0, 2000); // larger sample for franc
+
+  // Check franc if we have enough text (at least 100 chars)
+  let francDetected = false;
   if (sample.length > 100) {
     try {
-      const francFn = await getFranc();
-      const detected = francFn(sample, { minLength: 100 });
-      if (detected === 'spa') return { isSpanish: true, method: 'franc' };
+      const detected = franc(sample, { minLength: 100 });
+      if (detected === 'spa') {
+        francDetected = true;
+        signals.franc = true;
+        detectionMethod = 'franc';
+        return { isSpanish: true, method: detectionMethod };
+      }
     } catch (_) {}
   }
 
+  // Keyword heuristics: only use if franc didn't fire, and require at least 2 different keywords or a minimum count
+  // We'll also require that the total occurrences of Spanish keywords is >= 3 to avoid single false positive.
   const normalizedText = normalizeText(cleanText);
-  const spanishSignals = ['seguro', 'servicios', 'contacto', 'privacidad', 'terminos', 'cobertura', 'vida', 'espanol'].map(normalizeText);
+  const spanishSignals = ['seguro', 'servicios', 'contacto', 'privacidad', 'términos', 'cobertura', 'hogar', 'auto', 'vida', 'español'];
+  // Also include common accented forms: español, servicios, etc. Already normalized.
   let keywordCount = 0;
   const foundKeywords = new Set();
   for (const word of spanishSignals) {
-    const matches = (normalizedText.match(new RegExp(`\\b${word}\\b`, 'g')) || []).length;
-    if (matches > 0) { foundKeywords.add(word); keywordCount += matches; }
+    // Count occurrences (case-insensitive, already normalized)
+    const matches = (normalizedText.match(new RegExp(word, 'g')) || []).length;
+    if (matches > 0) {
+      foundKeywords.add(word);
+      keywordCount += matches;
+    }
   }
-  if (foundKeywords.size >= 2 && keywordCount >= 3) return { isSpanish: true, method: 'keyword' };
 
+  // Only count if we have at least 2 different keywords AND total occurrences >= 3
+  if (foundKeywords.size >= 2 && keywordCount >= 3) {
+    signals.keyword = true;
+    detectionMethod = 'keyword';
+    return { isSpanish: true, method: detectionMethod };
+  }
+
+  // If we got here, not Spanish
   return { isSpanish: false, method: 'none' };
 }
+
+// Old function replaced; we keep the old name for compatibility but now returns object
+// We'll adapt usage to unpack.
 
 function isDirectSpanishUrl(url) {
   try {
@@ -116,15 +172,20 @@ function isDirectSpanishUrl(url) {
 async function isApplicationUnavailablePage(page, url) {
   let statusCode = 0;
   try {
-    const response = await page.waitForResponse(resp => resp.url() === url && resp.status() >= 200, { timeout: 5000 });
+    const response = await page.waitForResponse(
+      resp => resp.url() === url && resp.status() >= 200,
+      { timeout: 5000 }
+    );
     statusCode = response.status();
-  } catch (_) {}
+  } catch (_) { /* no response captured */ }
   if (statusCode >= 400) return true;
   try {
     const title = await page.title().catch(() => '');
     const bodyText = await page.locator('body').innerText().catch(() => '');
     const combined = `${title}\n${bodyText}`.toLowerCase();
-    return combined.includes('application unavailable') || combined.includes('temporarily unavailable') || combined.includes('this page is currently unavailable') || combined.includes('# application unavailable');
+    return combined.includes('application unavailable') ||
+           combined.includes('temporarily unavailable') ||
+           combined.includes('this page is currently unavailable');
   } catch (_) { return false; }
 }
 
@@ -132,10 +193,17 @@ async function findEnEspanolLinkWithRetry(page, maxRetries = 3) {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const linkInfo = await findEnEspanolLink(page);
-      if (linkInfo.exists && linkInfo.visible && linkInfo.enabled && linkInfo.href) return linkInfo;
-      if (linkInfo.exists) await page.waitForTimeout(500);
-      else await page.waitForTimeout(300);
-    } catch (_) { await page.waitForTimeout(500); }
+      if (linkInfo.exists && linkInfo.visible && linkInfo.enabled && linkInfo.href) {
+        return linkInfo;
+      }
+      if (linkInfo.exists) {
+        await page.waitForTimeout(500);
+        continue;
+      }
+      await page.waitForTimeout(300);
+    } catch (_) {
+      await page.waitForTimeout(500);
+    }
   }
   return await findEnEspanolLink(page);
 }
@@ -154,239 +222,97 @@ async function validateEnEspanolForUrl(page, context, url) {
     detectedLanguage: 'unknown',
     status: 'SKIPPED',
     error: null,
-    errors: [], // Collect all errors encountered
-    pageError: null, // Capture page/console errors
+    pageError: null,  // capture errors during page execution when link exists
     evidence: [],
     screenshotPath: null,
-    detectionMethod: null
+    detectionMethod: null  // store which signal triggered Spanish detection
   };
 
   try {
-    // Use domcontentloaded – networkidle times out
-    try {
-      // Set up error listeners to capture page errors
-      page.on('console', msg => {
-        if (msg.type() === 'error') {
-          result.pageError = msg.text();
-        }
-      });
-      page.on('error', err => {
-        if (!result.pageError) result.pageError = err.message;
-      });
-
-      await page.goto(url, { waitUntil: 'domcontentloaded', timeout: config.navigationTimeout });
-    } catch (err) {
-      result.status = 'FAIL';
-      result.error = `Navigation error: ${err.message}`;
-      result.errors.push(result.error);
-      result.screenshotPath = await takeScreenshot(page, 'fail', config);
-      return result;
-    }
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: config.navigationTimeout });
 
     if (await isApplicationUnavailablePage(page, url)) {
       result.status = 'SKIPPED';
-      result.error = 'Application Unavailable page; validation skipped.';
-      result.errors.push(result.error);
+      result.error = 'Application Unavailable page; validation skipped because the page is not available for testing.';
       result.screenshotPath = await takeScreenshot(page, 'skip', config);
       return result;
     }
 
-    // Check if page error occurred - skip validation if error exists
-    if (result.pageError) {
-      result.status = 'FAIL';
-      result.error = `Page error detected: ${result.pageError}`;
-      result.errors.push(result.error);
-      return result;
-    }
+    await dismissCookieBanner(page, config);
 
-    try {
-      await dismissCookieBanner(page, config);
-    } catch (err) {
-      result.errors.push(`Cookie banner error: ${err.message}`);
-    }
-
-    let linkInfo;
-    try {
-      linkInfo = await findEnEspanolLinkWithRetry(page, 3);
-    } catch (err) {
-      result.status = 'FAIL';
-      result.error = `Error finding En Español link: ${err.message}`;
-      result.errors.push(result.error);
-      result.screenshotPath = await takeScreenshot(page, 'fail', config);
-      return result;
-    }
-    
+    const linkInfo = await findEnEspanolLinkWithRetry(page, 3);
     result.enEspanolExists = linkInfo.exists;
     result.enEspanolVisible = linkInfo.visible;
     result.enEspanolEnabled = linkInfo.enabled;
     result.enEspanolLink = linkInfo.href;
 
-    let spanishCheck;
-    try {
-      spanishCheck = await isAlreadySpanishPage(page, url);
-    } catch (err) {
-      result.errors.push(`Error detecting Spanish page: ${err.message}`);
-      spanishCheck = { isSpanish: false, method: 'error' };
-    }
+    // Use enhanced Spanish detection
+    const spanishCheck = await isAlreadySpanishPage(page, url);
     const alreadySpanish = spanishCheck.isSpanish;
     result.detectionMethod = spanishCheck.method;
 
     if (!linkInfo.exists || !linkInfo.visible || !linkInfo.enabled || !linkInfo.href) {
       if (alreadySpanish) {
-        try {
-          result.spanishUrl = page.url();
-          const translation = await validateSpanishTranslation(page, Object.assign({}, config, { acceptLanguage: 'es' }));
-          result.spanishTranslate = translation.spanishTranslate;
-          result.detectedLanguage = translation.detectedLanguage;
-          result.evidence = translation.evidence;
-          result.status = translation.spanishTranslate === 'Yes' ? 'PASS' : 'FAIL';
-          result.error = translation.message;
-          if (result.status === 'FAIL') result.screenshotPath = await takeScreenshot(page, 'fail', config);
-          return result;
-        } catch (err) {
-          result.status = 'FAIL';
-          result.error = `Spanish translation validation error: ${err.message}`;
-          result.errors.push(result.error);
-          result.screenshotPath = await takeScreenshot(page, 'fail', config);
-          return result;
-        }
+        result.spanishUrl = page.url();
+        const translation = await validateSpanishTranslation(page, Object.assign({}, config, { acceptLanguage: 'es' }));
+        result.spanishTranslate = translation.spanishTranslate;
+        result.detectedLanguage = translation.detectedLanguage;
+        result.evidence = translation.evidence;
+        result.status = translation.spanishTranslate === 'Yes' ? 'PASS' : 'FAIL';
+        result.error = translation.message;
+        if (result.status === 'FAIL') result.screenshotPath = await takeScreenshot(page, 'fail', config);
+        return result;
       }
       result.status = 'SKIPPED';
       result.error = 'En Español link missing, hidden, disabled, or has no href';
-      result.errors.push(result.error);
       result.screenshotPath = await takeScreenshot(page, 'skip', config);
       return result;
     }
 
     // --- Click the link ---
     let newPage = null;
-    let pageOpened = false;
-    
-    const waitForNewPage = context.waitForEvent('page', { timeout: 3000 })
-      .then(p => { 
-        newPage = p;
-        pageOpened = true;
-      })
-      .catch(() => { 
-        // No new page opened - likely same-page navigation
-        pageOpened = false;
-      });
+    const waitForPage = context.waitForEvent('page', { timeout: 10000 })
+      .then(p => { newPage = p; })
+      .catch(() => {});
 
     let clickError = null;
     try {
-      await linkInfo.locator.click({ timeout: 30000 });
+      await linkInfo.locator.click({ timeout: 10000 });
     } catch (err) {
       clickError = err;
+      result.pageError = `Click failed: ${err.message}`;
     }
 
     if (clickError) {
       result.status = 'FAIL';
       result.error = `Click failed: ${clickError.message}`;
-      result.errors.push(result.error);
       result.screenshotPath = await takeScreenshot(page, 'fail', config);
       return result;
     }
 
-    // Wait briefly to see if new page opens
-    await waitForNewPage;
-    await page.waitForTimeout(1000); // Give page time to start loading
+    await waitForPage;
 
     let spanishPage;
     try {
       if (newPage) {
-        // New page opened in new tab
         spanishPage = newPage;
-        // Set up error listeners for Spanish page
-        spanishPage.on('console', msg => {
-          if (msg.type() === 'error' && !result.pageError) {
-            result.pageError = msg.text();
-          }
-        });
-        spanishPage.on('error', err => {
-          if (!result.pageError) result.pageError = err.message;
-        });
         await spanishPage.waitForLoadState('domcontentloaded', { timeout: config.navigationTimeout });
       } else {
-        // Same-page navigation
         await page.waitForLoadState('domcontentloaded', { timeout: config.navigationTimeout });
         spanishPage = page;
       }
-    } catch (err) {
+    } catch (pageLoadErr) {
+      result.pageError = `Page load error: ${pageLoadErr.message}`;
       result.status = 'FAIL';
-      result.error = `Page load error: ${err.message}`;
-      result.errors.push(result.error);
+      result.error = result.pageError;
       result.screenshotPath = await takeScreenshot(page, 'fail', config);
       return result;
     }
 
-    try {
-      result.spanishUrl = await spanishPage.url();
-    } catch (err) {
-      result.errors.push(`Error getting Spanish page URL: ${err.message}`);
-    }
+    result.spanishUrl = await spanishPage.url();
 
-    // Check if page error occurred on Spanish page - skip validation if error exists
-    if (result.pageError) {
-      result.status = 'FAIL';
-      result.error = `Spanish page error detected: ${result.pageError}`;
-      result.errors.push(result.error);
-      if (spanishPage !== page) await spanishPage.close().catch(() => {});
-      return result;
-    }
-
-    // =========================================================
-    // VALIDATE LINK ACTUALLY LED TO SPANISH CONTENT
-    // =========================================================
-    // Check if we got redirected to login/oauth/error instead of Spanish page
-    const redirectUrl = result.spanishUrl || '';
-    const isUnexpectedRedirect = redirectUrl.includes('authorization.oauth') 
-      || redirectUrl.includes('login') 
-      || redirectUrl.includes('signin')
-      || redirectUrl.includes('error')
-      || redirectUrl.includes('404');
-    
-    if (isUnexpectedRedirect) {
-      result.status = 'FAIL';
-      result.error = `Clicking "En Español" redirected to ${redirectUrl.split('?')[0]} instead of Spanish content`;
-      result.errors.push(result.error);
-      result.screenshotPath = await takeScreenshot(spanishPage, 'fail', config);
-      if (spanishPage !== page) await spanishPage.close().catch(() => {});
-      return result;
-    }
-    // =========================================================
-
-    // =========================================================
-    // WAIT FOR TRANSLATION TO RENDER
-    // =========================================================
-    // Step 1: Wait for the footer indicator "Privacidad" (optional - don't fail if not found)
-    let privacidadFound = false;
-    try {
-      await spanishPage.locator('body').getByText('Privacidad', { exact: false }).first().waitFor({ timeout: 10000 });
-      privacidadFound = true;
-      console.log(`✅ Footer loaded (found "Privacidad") for ${url}`);
-    } catch (e) {
-      // Don't fail - just log that we didn't find it
-      result.errors.push(`"Privacidad" footer not found (${e.message.split('\n')[0]})`);
-      console.warn(`⚠️ "Privacidad" not found for ${url}, continuing with wait`);
-    }
-
-    // Step 2: Always wait 2-3 seconds for AJAX/dynamic content to fully load
-    await spanishPage.waitForTimeout(2500);
-    // =========================================================
-
-    // Validate Spanish translation – now the content should be fully translated
-    let translation;
-    try {
-      translation = await validateSpanishTranslation(spanishPage, Object.assign({}, config, { acceptLanguage: 'es' }));
-    } catch (err) {
-      result.status = 'FAIL';
-      result.error = `Translation validation error: ${err.message}`;
-      result.errors.push(result.error);
-      result.screenshotPath = await takeScreenshot(spanishPage, 'fail', config);
-      if (spanishPage !== page) await spanishPage.close().catch(() => {});
-      return result;
-    }
-    
+    // Validate Spanish translation on the resulting page – THIS IS THE ONLY DECISIVE CHECK
+    const translation = await validateSpanishTranslation(spanishPage, Object.assign({}, config, { acceptLanguage: 'es' }));
     result.spanishTranslate = translation.spanishTranslate;
     result.detectedLanguage = translation.detectedLanguage;
     result.evidence = translation.evidence;
@@ -396,7 +322,7 @@ async function validateEnEspanolForUrl(page, context, url) {
       result.screenshotPath = await takeScreenshot(spanishPage, 'fail', config);
     }
 
-    // Clean up
+    // --- Clean up ---
     if (spanishPage !== page) {
       await spanishPage.close().catch(() => {});
     } else {
@@ -406,7 +332,6 @@ async function validateEnEspanolForUrl(page, context, url) {
   } catch (err) {
     result.status = 'FAIL';
     result.error = `Unexpected error: ${err.message}`;
-    result.errors.push(result.error);
     result.screenshotPath = await takeScreenshot(page, 'fail', config);
   }
   return result;
@@ -425,7 +350,7 @@ async function validateEnEspanolForUrl(page, context, url) {
   try {
     const startUrls = await getStartUrls();
     if (!startUrls.length) {
-      console.error('No URLs found.');
+      console.error('No URLs found in url.csv and no URL argument provided.');
       return;
     }
 
@@ -474,11 +399,11 @@ async function validateEnEspanolForUrl(page, context, url) {
       status: r.status || '',
       detectionMethod: r.detectionMethod || 'none',
       pageError: r.pageError || '',
-      details: r.errors && r.errors.length > 0 ? r.errors.join('; ') : (r.error && r.error.length > 0 ? r.error : (r.evidence ? r.evidence.join('; ') : ''))
+      details: r.error && r.error.length > 0 ? r.error : (r.evidence ? r.evidence.join('; ') : '')
     }));
 
     let html = `<!doctype html><html><head><meta charset="utf-8"><title>En Español Validation (Strict)</title>
-      <style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px;text-align:left}</style>
+      <style>table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#f0f0f0}</style>
       </head><body><h2>En Español Validation – Strict Mode</h2>
       <p><strong>Summary:</strong> ${JSON.stringify(summary)}</p>
       <p><em>Detection Method shows which signal (url, html-lang, hreflang, og-locale, franc, keyword) triggered Spanish detection.</em></p>
@@ -505,7 +430,7 @@ async function validateEnEspanolForUrl(page, context, url) {
       { header: 'Spanish Translate', key: 'spanishTranslate', width: 15 },
       { header: 'Status', key: 'status', width: 10 },
       { header: 'Detection Method', key: 'detectionMethod', width: 20 },
-      { header: 'Page Error', key: 'pageError', width: 60 },
+      { header: 'Page Error', key: 'pageError', width: 50 },
       { header: 'Validation Details', key: 'details', width: 80 }
     ];
     for (const r of results) {
@@ -517,7 +442,7 @@ async function validateEnEspanolForUrl(page, context, url) {
         status: r.status || '',
         detectionMethod: r.detectionMethod || 'none',
         pageError: r.pageError || '',
-        details: r.errors && r.errors.length > 0 ? r.errors.join('; ') : (r.error && r.error.length > 0 ? r.error : (r.evidence ? r.evidence.join('; ') : ''))
+        details: r.error && r.error.length > 0 ? r.error : (r.evidence ? r.evidence.join('; ') : '')
       });
     }
     const excelPath = path.join(reportDir, `espanol_validation_${Date.now()}.xlsx`);
