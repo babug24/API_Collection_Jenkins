@@ -8,6 +8,33 @@ const franc = require('franc');
 const DEFAULT_URL_CSV = path.join(__dirname, 'url.csv');
 const config = mergeConfig({});
 
+// ==================== Config Parsing ====================
+
+function parseCommandLineArgs() {
+  const args = {
+    csvFile: null,
+    batchSize: 10,        // default batch size for concurrent URLs
+    limit: null,           // max number of URLs to process (null = all)
+    verbose: process.argv.includes('--verbose') || process.argv.includes('-v')
+  };
+
+  for (let i = 2; i < process.argv.length; i++) {
+    if ((process.argv[i] === '--file' || process.argv[i] === '-f') && i + 1 < process.argv.length) {
+      args.csvFile = process.argv[i + 1];
+      i++;
+    } else if ((process.argv[i] === '--batch-size' || process.argv[i] === '-b') && i + 1 < process.argv.length) {
+      const size = parseInt(process.argv[i + 1], 10);
+      if (!isNaN(size) && size > 0) args.batchSize = size;
+      i++;
+    } else if ((process.argv[i] === '--limit' || process.argv[i] === '-l') && i + 1 < process.argv.length) {
+      const limit = parseInt(process.argv[i + 1], 10);
+      if (!isNaN(limit) && limit > 0) args.limit = limit;
+      i++;
+    }
+  }
+  return args;
+}
+
 // ==================== Helpers ====================
 
 function readUrlsFromCsv(filePath) {
@@ -26,37 +53,41 @@ function readUrlsFromCsv(filePath) {
   return records.map(r => r[urlColumn]).filter(Boolean);
 }
 
-async function getStartUrls() {
-  // Check for --file or -f flag
-  let csvFilePath = null;
-  for (let i = 2; i < process.argv.length; i++) {
-    if ((process.argv[i] === '--file' || process.argv[i] === '-f') && i + 1 < process.argv.length) {
-      csvFilePath = process.argv[i + 1];
-      break;
-    }
-  }
+async function getStartUrls(args) {
+  let urls = [];
   
   // If --file flag provided, use that CSV
-  if (csvFilePath) {
-    const absolutePath = path.isAbsolute(csvFilePath) ? csvFilePath : path.join(process.cwd(), csvFilePath);
+  if (args.csvFile) {
+    const absolutePath = path.isAbsolute(args.csvFile) ? args.csvFile : path.join(process.cwd(), args.csvFile);
     if (fs.existsSync(absolutePath)) {
-      return readUrlsFromCsv(absolutePath);
+      urls = readUrlsFromCsv(absolutePath);
     } else {
       console.error(`CSV file not found: ${absolutePath}`);
       return [];
     }
+  } else {
+    // Legacy: check for direct CSV filename or URL in argv[2]
+    const arg = process.argv[2];
+    if (!arg && fs.existsSync(DEFAULT_URL_CSV)) {
+      urls = readUrlsFromCsv(DEFAULT_URL_CSV);
+    } else if (arg && arg.toLowerCase().endsWith('.csv')) {
+      const csvPath = path.isAbsolute(arg) ? arg : path.join(process.cwd(), arg);
+      if (fs.existsSync(csvPath)) urls = readUrlsFromCsv(csvPath);
+    } else if (arg && !arg.startsWith('-')) {
+      urls = [arg];
+    } else if (fs.existsSync(DEFAULT_URL_CSV)) {
+      urls = readUrlsFromCsv(DEFAULT_URL_CSV);
+    } else {
+      urls = ['https://www.nationwide.com/'];
+    }
   }
-  
-  // Legacy: check for direct CSV filename or URL in argv[2]
-  const arg = process.argv[2];
-  if (!arg && fs.existsSync(DEFAULT_URL_CSV)) return readUrlsFromCsv(DEFAULT_URL_CSV);
-  if (arg && arg.toLowerCase().endsWith('.csv')) {
-    const csvPath = path.isAbsolute(arg) ? arg : path.join(process.cwd(), arg);
-    if (fs.existsSync(csvPath)) return readUrlsFromCsv(csvPath);
+
+  // Apply limit if specified
+  if (args.limit && urls.length > args.limit) {
+    urls = urls.slice(0, args.limit);
   }
-  if (arg && !arg.startsWith('-')) return [arg]; // Don't treat flags as URLs
-  if (fs.existsSync(DEFAULT_URL_CSV)) return readUrlsFromCsv(DEFAULT_URL_CSV);
-  return ['https://www.nationwide.com/'];
+
+  return urls;
 }
 
 // Normalize text: lowercase and remove diacritics for keyword matching
@@ -361,32 +392,113 @@ async function validateEnEspanolForUrl(page, context, url) {
 // ==================== Main Execution ====================
 
 (async () => {
+  const args = parseCommandLineArgs();
   const browser = await chromium.launch({ headless: true });
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
     viewport: { width: 1280, height: 720 }
   });
   const results = [];
+  const startTime = Date.now();
 
   try {
-    const startUrls = await getStartUrls();
+    const startUrls = await getStartUrls(args);
     if (!startUrls.length) {
       console.error('No URLs found in url.csv and no URL argument provided.');
       return;
     }
 
-    for (const url of startUrls) {
-      const page = await context.newPage();
-      try {
-        const res = await validateEnEspanolForUrl(page, context, url);
-        results.push(res);
-        console.log(`${url} → ${res.status} (${res.spanishTranslate}) [detection: ${res.detectionMethod || 'none'}]`);
-      } finally {
-        await page.close().catch(() => {});
+    console.log(`\n=== En Español Validator ===`);
+    console.log(`Total URLs to process: ${startUrls.length}`);
+    if (args.limit) console.log(`Limit: ${args.limit}`);
+    console.log(`Batch size: ${args.batchSize}`);
+    console.log(`Starting validation...\n`);
+
+    // Process URLs in batches
+    for (let batchStart = 0; batchStart < startUrls.length; batchStart += args.batchSize) {
+      const batchEnd = Math.min(batchStart + args.batchSize, startUrls.length);
+      const batchUrls = startUrls.slice(batchStart, batchEnd);
+      const batchNum = Math.floor(batchStart / args.batchSize) + 1;
+      const totalBatches = Math.ceil(startUrls.length / args.batchSize);
+
+      if (args.verbose) {
+        console.log(`\n[Batch ${batchNum}/${totalBatches}] Processing ${batchUrls.length} URLs...`);
+      }
+
+      // Process URLs in parallel within batch
+      const batchPromises = batchUrls.map(async (url) => {
+        let page = null;
+        try {
+          page = await context.newPage().catch(err => {
+            console.error(`Failed to create page for ${url}: ${err.message}`);
+            return null;
+          });
+
+          if (!page) {
+            const result = {
+              url,
+              enEspanolExists: false,
+              enEspanolLink: null,
+              enEspanolVisible: false,
+              enEspanolEnabled: false,
+              spanishUrl: null,
+              spanishTranslate: 'No',
+              detectedLanguage: 'unknown',
+              status: 'FAILED',
+              error: 'Failed to create browser page',
+              pageError: null,
+              evidence: [],
+              screenshotPath: null,
+              detectionMethod: 'none'
+            };
+            return result;
+          }
+
+          const res = await validateEnEspanolForUrl(page, context, url);
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          const processed = results.length + 1;
+          const remaining = startUrls.length - processed;
+          const rate = processed / (elapsed / 60); // URLs per minute
+          const etaMinutes = remaining > 0 ? (remaining / rate).toFixed(1) : '0';
+
+          console.log(`[${processed}/${startUrls.length}] ${url} → ${res.status} (${res.spanishTranslate}) [ETA: ${etaMinutes}m]`);
+          return res;
+        } catch (err) {
+          console.error(`Error processing ${url}: ${err.message}`);
+          const result = {
+            url,
+            enEspanolExists: false,
+            enEspanolLink: null,
+            enEspanolVisible: false,
+            enEspanolEnabled: false,
+            spanishUrl: null,
+            spanishTranslate: 'No',
+            detectedLanguage: 'unknown',
+            status: 'FAILED',
+            error: `Unexpected error: ${err.message}`,
+            pageError: null,
+            evidence: [],
+            screenshotPath: null,
+            detectionMethod: 'none'
+          };
+          return result;
+        } finally {
+          if (page) {
+            await page.close().catch(() => {});
+          }
+        }
+      });
+
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults);
+
+      // Add small delay between batches to avoid overwhelming the system
+      if (batchEnd < startUrls.length) {
+        await new Promise(resolve => setTimeout(resolve, 500));
       }
     }
   } catch (e) {
-    console.error(e.message);
+    console.error('Critical error:', e.message);
   } finally {
     await browser.close();
   }
@@ -473,7 +585,17 @@ async function validateEnEspanolForUrl(page, context, url) {
     console.error('Failed to write Excel report', e.message);
   }
 
-  console.log('Summary:', summary);
+  // Print final summary with timing
+  const totalSeconds = (Date.now() - startTime) / 1000;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = Math.floor(totalSeconds % 60);
+  const urlsPerMinute = (results.length / (totalSeconds / 60)).toFixed(1);
+
+  console.log('\n=== Validation Complete ===');
+  console.log(`Summary: ${JSON.stringify(summary)}`);
+  console.log(`Time elapsed: ${minutes}m ${seconds}s`);
+  console.log(`Average rate: ${urlsPerMinute} URLs/minute`);
+  console.log(`Total URLs processed: ${results.length}`);
 })();
 
 function escapeHtml(s) {
