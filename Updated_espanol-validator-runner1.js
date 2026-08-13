@@ -27,13 +27,34 @@ function readUrlsFromCsv(filePath) {
 }
 
 async function getStartUrls() {
+  // Check for --file or -f flag
+  let csvFilePath = null;
+  for (let i = 2; i < process.argv.length; i++) {
+    if ((process.argv[i] === '--file' || process.argv[i] === '-f') && i + 1 < process.argv.length) {
+      csvFilePath = process.argv[i + 1];
+      break;
+    }
+  }
+  
+  // If --file flag provided, use that CSV
+  if (csvFilePath) {
+    const absolutePath = path.isAbsolute(csvFilePath) ? csvFilePath : path.join(process.cwd(), csvFilePath);
+    if (fs.existsSync(absolutePath)) {
+      return readUrlsFromCsv(absolutePath);
+    } else {
+      console.error(`CSV file not found: ${absolutePath}`);
+      return [];
+    }
+  }
+  
+  // Legacy: check for direct CSV filename or URL in argv[2]
   const arg = process.argv[2];
   if (!arg && fs.existsSync(DEFAULT_URL_CSV)) return readUrlsFromCsv(DEFAULT_URL_CSV);
   if (arg && arg.toLowerCase().endsWith('.csv')) {
     const csvPath = path.isAbsolute(arg) ? arg : path.join(process.cwd(), arg);
     if (fs.existsSync(csvPath)) return readUrlsFromCsv(csvPath);
   }
-  if (arg) return [arg];
+  if (arg && !arg.startsWith('-')) return [arg]; // Don't treat flags as URLs
   if (fs.existsSync(DEFAULT_URL_CSV)) return readUrlsFromCsv(DEFAULT_URL_CSV);
   return ['https://www.nationwide.com/'];
 }
