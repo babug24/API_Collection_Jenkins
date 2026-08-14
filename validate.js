@@ -3,7 +3,9 @@
 /**
  * Spanish Language Conversion Validator (Strict)
  * Validates that the Spanish page contains distinctive Spanish words.
- * Clears browser cache and performs Ctrl+F5 hard refresh after navigation.
+ * Handles SPAs (client‑side redirects) and dynamic content.
+ * Skips "En Español" link check if the URL is already Spanish.
+ * Clears cache and performs Ctrl+F5 hard refresh after navigation.
  * Outputs an Excel report in the "reports/" folder with a timestamp.
  *
  * Usage:
@@ -181,6 +183,13 @@ function parseCsvUrls(lines) {
 }
 
 // ============================================================
+//  CHECK IF URL IS ALREADY SPANISH
+// ============================================================
+function isSpanishUrl(url) {
+  return /^https:\/\/espanol\..*/.test(url) || /\/espanol/.test(url);
+}
+
+// ============================================================
 //  ROBUST "En Español" LINK FINDER
 // ============================================================
 async function findEnEspanolLink(page) {
@@ -278,7 +287,7 @@ async function clearBrowserCache(page) {
 }
 
 // ============================================================
-//  EXTRACT MAIN CONTENT
+//  EXTRACT MAIN CONTENT (improved)
 // ============================================================
 async function extractMainContent(page, count = SAMPLE_COUNT, debug = false) {
   console.log('   Waiting for app-root...');
@@ -304,6 +313,7 @@ async function extractMainContent(page, count = SAMPLE_COUNT, debug = false) {
     console.warn('   ⚠️  Content not loaded after 20s, proceeding anyway.');
   }
 
+  // Scroll to trigger lazy loading
   await page.evaluate(async () => {
     await new Promise((resolve) => {
       let totalHeight = 0;
@@ -432,48 +442,53 @@ function hasSpanishContent(samples) {
 }
 
 // ============================================================
-//  CLICK + NAVIGATION HANDLER
+//  CLICK + NAVIGATION HANDLER (SPA‑aware)
 // ============================================================
 async function clickAndWaitForLanguagePage(page, linkHandle, debug = false) {
-  const newPagePromise = new Promise((resolve) => {
-    const timeout = setTimeout(() => { resolve(null); }, 2000);
-    const browser = page.browser();
-    const onTarget = async (target) => {
-      if (target.type() === 'page') {
-        const newPage = await target.page();
-        if (newPage && newPage !== page) {
-          clearTimeout(timeout);
-          browser.off('targetcreated', onTarget);
-          resolve(newPage);
-        }
-      }
-    };
-    browser.on('targetcreated', onTarget);
-    setTimeout(() => {
-      browser.off('targetcreated', onTarget);
-      resolve(null);
-    }, 3000);
-  });
+  // 1. Capture the current page state (for SPA detection)
+  const initialUrl = page.url();
+  let initialContent = '';
+  try {
+    initialContent = await page.evaluate(() => document.body.innerText.trim().slice(0, 500));
+  } catch (_) {}
 
   console.log('   Clicking link...');
   await linkHandle.click();
 
+  // 2. Wait for either URL change OR content change (SPA)
   const navigationPromise = page.waitForNavigation({
     waitUntil: 'networkidle2',
     timeout: 10000
   }).catch(() => null);
 
-  const initialUrl = page.url();
   const urlChangePromise = page.waitForFunction(
     (url) => window.location.href !== url,
     { timeout: 10000 },
     initialUrl
   ).catch(() => null);
 
+  // 3. Also wait for content to become Spanish (or at least change)
+  const contentChangePromise = page.waitForFunction(
+    (initial) => {
+      const current = document.body.innerText.trim().slice(0, 500);
+      // If content length has grown significantly, assume navigation occurred
+      if (current.length > initial.length + 100) return true;
+      // Also check for Spanish words
+      const spanishWords = ['protegemos', 'vehículo', 'propiedad', 'negocios', 'inversiones', 'seguro', 'cobertura', 'cotización'];
+      const lower = current.toLowerCase();
+      for (const w of spanishWords) {
+        if (lower.includes(w)) return true;
+      }
+      return false;
+    },
+    { timeout: 15000 },
+    initialContent
+  ).catch(() => null);
+
   const result = await Promise.race([
     navigationPromise.then(() => ({ type: 'navigation', page: page })),
     urlChangePromise.then(() => ({ type: 'urlchange', page: page })),
-    newPagePromise.then((newPage) => newPage ? ({ type: 'newpage', page: newPage }) : null)
+    contentChangePromise.then(() => ({ type: 'contentchange', page: page }))
   ]);
 
   if (result) {
@@ -481,16 +496,42 @@ async function clickAndWaitForLanguagePage(page, linkHandle, debug = false) {
     return result.page;
   }
 
-  console.log('   No navigation detected, checking content...');
-  const samples = await extractMainContent(page, 5);
-  const result2 = hasSpanishContent(samples);
-  if (result2.found) {
-    console.log('   Content contains Spanish words (no navigation).');
-    return page;
+  console.log('   No navigation or content change detected.');
+  return null;
+}
+
+// ============================================================
+//  POST-NAVIGATION REFRESH AND CACHE CLEAR
+// ============================================================
+async function refreshSpanishPage(page) {
+  console.log('   Clearing browser cache...');
+  await clearBrowserCache(page);
+
+  console.log('   Performing hard refresh (Ctrl+F5)...');
+  try {
+    await page.keyboard.down('Control');
+    await page.keyboard.press('F5');
+    await page.keyboard.up('Control');
+    await page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 });
+    await new Promise(r => setTimeout(r, 2000));
+    console.log('   ✅ Hard refresh completed.');
+  } catch (refreshError) {
+    console.warn(`   ⚠️  Hard refresh failed: ${refreshError.message}, continuing anyway.`);
   }
 
-  console.log('   No successful navigation or Spanish content detected.');
-  return null;
+  try {
+    await page.waitForFunction(
+      () => {
+        const root = document.querySelector('app-root');
+        if (!root) return false;
+        return root.textContent.trim().length > 100;
+      },
+      { timeout: 15000 }
+    );
+    console.log('   ✅ Content reloaded successfully.');
+  } catch (_) {
+    console.warn('   ⚠️  Content not visible after refresh, proceeding anyway.');
+  }
 }
 
 // ============================================================
@@ -518,14 +559,12 @@ async function validateSpanishConversion(url, debug = false) {
     page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
 
-    // ---- CLEAR BROWSER CACHE BEFORE NAVIGATION ----
     console.log('   Clearing browser cache...');
     await clearBrowserCache(page);
 
     console.log(`   Navigating to ${url} ...`);
     let response;
     try {
-      // Also add cache-busting query param or use ignoreCache flag
       response = await page.goto(url, {
         waitUntil: 'networkidle2',
         timeout: 30000
@@ -544,6 +583,47 @@ async function validateSpanishConversion(url, debug = false) {
     }
     console.log('   Page loaded.');
 
+    const isAlreadySpanish = isSpanishUrl(url);
+
+    if (isAlreadySpanish) {
+      console.log('   ℹ️  URL is already Spanish – skipping link search.');
+      result.elementFound = 'N/A';
+      result.linkHref = url;
+      result.linkValid = 'N/A';
+
+      console.log(`   Current URL: ${url}`);
+      console.log('   ✅ URL is already Spanish (pattern matches).');
+
+      console.log('   Performing post-load refresh...');
+      await refreshSpanishPage(page);
+
+      console.log('   Extracting main content...');
+      const samples = await extractMainContent(page, SAMPLE_COUNT, debug);
+      console.log(`   Extracted ${samples.length} samples.`);
+      if (samples.length === 0) {
+        result.details = 'Spanish translation not detected';
+        result.status = 'FAIL';
+        return result;
+      }
+
+      const spanishCheck = hasSpanishContent(samples);
+      console.log(`   Found ${spanishCheck.totalFound} Spanish word(s): ${spanishCheck.foundWords.join(', ')}`);
+
+      if (spanishCheck.found) {
+        console.log('   ✅ PASS – Spanish content found.');
+        result.spanishTranslate = 'Pass';
+        result.details = 'Spanish translation successfully validated.';
+        result.status = 'PASS';
+      } else {
+        console.log('   ❌ FAIL – No Spanish content found.');
+        result.spanishTranslate = 'Fail';
+        result.details = 'Spanish translation not detected';
+        result.status = 'FAIL';
+      }
+      return result;
+    }
+
+    // ---- English page – find and click "En Español" ----
     console.log('   Searching for "En Español" link...');
     const linkHandle = await findEnEspanolLink(page);
     if (!linkHandle) {
@@ -583,19 +663,6 @@ async function validateSpanishConversion(url, debug = false) {
       return result;
     }
 
-    // ---- HARD REFRESH USING Ctrl+F5 ----
-    console.log('   Performing hard refresh (Ctrl+F5)...');
-    try {
-      await targetPage.keyboard.down('Control');
-      await targetPage.keyboard.press('F5');
-      await targetPage.keyboard.up('Control');
-      await targetPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 });
-      await new Promise(r => setTimeout(r, 2000));
-      console.log('   ✅ Hard refresh completed.');
-    } catch (refreshError) {
-      console.warn(`   ⚠️  Hard refresh failed: ${refreshError.message}, continuing anyway.`);
-    }
-
     const currentPage = targetPage;
     const newUrl = currentPage.url();
     console.log(`   Current URL: ${newUrl}`);
@@ -610,8 +677,11 @@ async function validateSpanishConversion(url, debug = false) {
       console.log('   ✅ URL pattern matches.');
     }
 
+    console.log('   Performing post-navigation refresh...');
+    await refreshSpanishPage(targetPage);
+
     console.log('   Extracting main content...');
-    const samples = await extractMainContent(currentPage, SAMPLE_COUNT, debug);
+    const samples = await extractMainContent(targetPage, SAMPLE_COUNT, debug);
     console.log(`   Extracted ${samples.length} samples.`);
     if (samples.length === 0) {
       result.details = 'Spanish translation not detected';
