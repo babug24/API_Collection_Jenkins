@@ -3,6 +3,7 @@
 /**
  * Spanish Language Conversion Validator (Strict)
  * Validates that the Spanish page contains distinctive Spanish words.
+ * Clears browser cache and performs Ctrl+F5 hard refresh after navigation.
  * Outputs an Excel report in the "reports/" folder with a timestamp.
  *
  * Usage:
@@ -22,9 +23,7 @@ const SAMPLE_COUNT = 8;
 const REPORTS_DIR = path.join(__dirname, 'reports');
 
 // DISTINCTIVE SPANISH WORDS (unlikely to appear in English text)
-// Removed ambiguous words like "auto", "vida", "personal", "recursos", etc.
 const SPANISH_WORDS = [
-  // Key content words (mostly with accents or long forms)
   'protegemos', 'vehículo', 'propiedad', 'negocios', 'inversiones',
   'reclamos', 'factura', 'código', 'cotización', 'explorar',
   'financieros', 'jubilación', 'solicitar', 'póliza', 'temporal',
@@ -33,7 +32,6 @@ const SPANISH_WORDS = [
   'viaje', 'salud', 'seguro', 'cobertura', 'tarifa',
   'analiza', 'ingresar', 'comenzar', 'buscar', 'protección',
   'disposición', 'beneficios', 'miembros',
-  // Phrases (exact matches)
   'peyton manning', 'mucho más', 'hace falta', 'iniciar sesión',
   'gustaría hacer', 'paquete', 'código postal', 'comenzar la cotización',
   'centro de información', 'recursos de seguro', 'pequeñas empresas',
@@ -267,10 +265,22 @@ function isValidSpanishUrl(url) {
 }
 
 // ============================================================
+//  CLEAR BROWSER CACHE (using CDP)
+// ============================================================
+async function clearBrowserCache(page) {
+  try {
+    const client = await page.target().createCDPSession();
+    await client.send('Network.clearBrowserCache');
+    console.log('   ✅ Browser cache cleared.');
+  } catch (err) {
+    console.warn(`   ⚠️  Could not clear cache: ${err.message}`);
+  }
+}
+
+// ============================================================
 //  EXTRACT MAIN CONTENT
 // ============================================================
 async function extractMainContent(page, count = SAMPLE_COUNT, debug = false) {
-  // 1. Wait for the Angular root element
   console.log('   Waiting for app-root...');
   try {
     await page.waitForSelector('app-root', { timeout: 15000 });
@@ -279,7 +289,6 @@ async function extractMainContent(page, count = SAMPLE_COUNT, debug = false) {
     console.warn('   ⚠️  app-root not found, falling back to body.');
   }
 
-  // 2. Wait for content
   console.log('   Waiting for content to load...');
   try {
     await page.waitForFunction(
@@ -295,7 +304,6 @@ async function extractMainContent(page, count = SAMPLE_COUNT, debug = false) {
     console.warn('   ⚠️  Content not loaded after 20s, proceeding anyway.');
   }
 
-  // 3. Scroll to trigger lazy loading
   await page.evaluate(async () => {
     await new Promise((resolve) => {
       let totalHeight = 0;
@@ -313,9 +321,7 @@ async function extractMainContent(page, count = SAMPLE_COUNT, debug = false) {
   });
   await new Promise(r => setTimeout(r, 3000));
 
-  // 4. Extract text samples
   const texts = await page.evaluate((c, isDebug) => {
-    // SAFE CLASS NAME GETTER
     function getClassString(el) {
       if (!el) return '';
       if (typeof el.className === 'string') return el.className;
@@ -352,8 +358,6 @@ async function extractMainContent(page, count = SAMPLE_COUNT, debug = false) {
     }
 
     const container = document.querySelector('app-root') || document.body;
-
-    // Find all non-UI elements with text
     const all = container.querySelectorAll('*');
     const candidates = [];
     for (const el of all) {
@@ -364,10 +368,8 @@ async function extractMainContent(page, count = SAMPLE_COUNT, debug = false) {
       }
     }
 
-    // Take the largest chunks first
     candidates.sort((a, b) => b.length - a.length);
 
-    // Extract samples
     const samples = [];
     const seen = new Set();
     for (const text of candidates) {
@@ -378,7 +380,6 @@ async function extractMainContent(page, count = SAMPLE_COUNT, debug = false) {
       }
     }
 
-    // Fallback: split body into chunks
     if (samples.length < c) {
       const bodyText = getCleanText(container);
       const chunks = bodyText.split(/\n\s*\n|\.\s+|\?\s+/).filter(s => s.length > 40);
@@ -401,7 +402,7 @@ async function extractMainContent(page, count = SAMPLE_COUNT, debug = false) {
 }
 
 // ============================================================
-//  CHECK FOR SPANISH WORDS (STRICT)
+//  CHECK FOR SPANISH WORDS
 // ============================================================
 function hasSpanishContent(samples) {
   if (!samples || samples.length === 0) {
@@ -424,7 +425,7 @@ function hasSpanishContent(samples) {
 
   return {
     found: hasSpanish,
-    foundWords: foundWords.slice(0, 5), // limit for display
+    foundWords: foundWords.slice(0, 5),
     totalFound: foundWords.length,
     samplesAnalyzed: samples.length
   };
@@ -517,20 +518,26 @@ async function validateSpanishConversion(url, debug = false) {
     page = await browser.newPage();
     await page.setViewport({ width: 1280, height: 800 });
 
+    // ---- CLEAR BROWSER CACHE BEFORE NAVIGATION ----
+    console.log('   Clearing browser cache...');
+    await clearBrowserCache(page);
+
     console.log(`   Navigating to ${url} ...`);
     let response;
     try {
-      response = await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
+      // Also add cache-busting query param or use ignoreCache flag
+      response = await page.goto(url, {
+        waitUntil: 'networkidle2',
+        timeout: 30000
+      });
       if (!response) {
         throw new Error('No response received');
       }
       if (!response.ok()) {
         result.pageError = `HTTP ${response.status()} ${response.statusText()}`;
-        // Continue anyway to check for Spanish content if page loads partially
       }
     } catch (err) {
       result.pageError = err.message;
-      // Mark as FAIL and return early if navigation fails completely
       result.details = `Page error: ${err.message}`;
       result.status = 'FAIL';
       return result;
@@ -554,7 +561,6 @@ async function validateSpanishConversion(url, debug = false) {
     const clickInfo = await isClickable(page, linkHandle);
     if (!clickInfo.clickable) {
       console.log(`   ❌ Link not clickable: ${clickInfo.reason}`);
-      // Try force click
       try {
         await page.evaluate(el => el.click(), linkHandle);
         result.linkValid = 'Force Clicked';
@@ -572,10 +578,22 @@ async function validateSpanishConversion(url, debug = false) {
     const targetPage = await clickAndWaitForLanguagePage(page, linkHandle, debug);
     if (!targetPage) {
       result.linkValid = 'Invalid';
-      // Accurate message for navigation failure
       result.details = 'Click did not lead to navigation or content change';
       result.status = 'FAIL';
       return result;
+    }
+
+    // ---- HARD REFRESH USING Ctrl+F5 ----
+    console.log('   Performing hard refresh (Ctrl+F5)...');
+    try {
+      await targetPage.keyboard.down('Control');
+      await targetPage.keyboard.press('F5');
+      await targetPage.keyboard.up('Control');
+      await targetPage.waitForNavigation({ waitUntil: 'networkidle2', timeout: 10000 });
+      await new Promise(r => setTimeout(r, 2000));
+      console.log('   ✅ Hard refresh completed.');
+    } catch (refreshError) {
+      console.warn(`   ⚠️  Hard refresh failed: ${refreshError.message}, continuing anyway.`);
     }
 
     const currentPage = targetPage;
