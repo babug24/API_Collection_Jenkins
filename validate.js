@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Spanish Language Conversion Validator (Simple)
+ * Spanish Language Conversion Validator (Strict)
  * Validates that the Spanish page contains distinctive Spanish words.
  * Outputs an Excel report in the "reports/" folder with a timestamp.
  *
@@ -22,27 +22,26 @@ const SAMPLE_COUNT = 8;
 const REPORTS_DIR = path.join(__dirname, 'reports');
 
 // DISTINCTIVE SPANISH WORDS (unlikely to appear in English text)
+// Removed ambiguous words like "auto", "vida", "personal", "recursos", etc.
 const SPANISH_WORDS = [
-  // Key content words from the Spanish page
-  'Centro de información','Recursos de seguro','Automático','Inicio','Pequeñas empresas',
-  'Deportes de motor','Finanzas personales','Inversiones','Planificación de emergencias',
-  'Agricultura y agroindustria','Centro de recursos cibernéticos','Enlaces relacionados','Encontrar un profesional financiero',
-  'Preguntas frecuentes sobre inversiones','Finanzas a nivel nacional','Ahora desde Nationwide','El blog Advisor Advocate','Agencia Forward',
-  'protegemos', 'vehículo', 'propiedad', 'negocios', 'inversiones','Automático',
-   'Vehículo','Propiedad','Personal','Negocios','Inversiones','Recursos',
-  'recursos', 'reclamos', 'factura', 'código', 'postal',
-  'cotización', 'agente', 'explorar', 'productos', 'financieros',
-  'jubilación', 'miembro', 'solicitar', 'póliza', 'temporal',
+  // Key content words (mostly with accents or long forms)
+  'protegemos', 'vehículo', 'propiedad', 'negocios', 'inversiones',
+  'reclamos', 'factura', 'código', 'cotización', 'explorar',
+  'financieros', 'jubilación', 'solicitar', 'póliza', 'temporal',
   'personas', 'empresas', 'mascotas', 'eventos', 'empleados',
   'bienes', 'sueños', 'necesidades', 'ahorro', 'hogar',
   'viaje', 'salud', 'seguro', 'cobertura', 'tarifa',
-  'precio', 'analiza', 'ingresar', 'pagar', 'comenzar',
-  'buscar', 'protección', 'familia', 'auto', 'vida',
-  // Additional distinctive words
-  'disposición', 'beneficios', 'servicios', 'miembros',
-  // Phrases without spaces (for exact match)
+  'analiza', 'ingresar', 'comenzar', 'buscar', 'protección',
+  'disposición', 'beneficios', 'miembros',
+  // Phrases (exact matches)
   'peyton manning', 'mucho más', 'hace falta', 'iniciar sesión',
-  'gustaría hacer', 'paquete', 'código postal', 'comenzar la cotización'
+  'gustaría hacer', 'paquete', 'código postal', 'comenzar la cotización',
+  'centro de información', 'recursos de seguro', 'pequeñas empresas',
+  'deportes de motor', 'planificación de emergencias',
+  'agricultura y agroindustria', 'centro de recursos cibernéticos',
+  'encontrar un profesional financiero',
+  'preguntas frecuentes sobre inversiones', 'finanzas a nivel nacional',
+  'ahora desde nationwide', 'el blog advisor advocate', 'agencia forward'
 ];
 
 if (!fs.existsSync(REPORTS_DIR)) {
@@ -402,7 +401,7 @@ async function extractMainContent(page, count = SAMPLE_COUNT, debug = false) {
 }
 
 // ============================================================
-//  CHECK FOR SPANISH WORDS (REFINED)
+//  CHECK FOR SPANISH WORDS (STRICT)
 // ============================================================
 function hasSpanishContent(samples) {
   if (!samples || samples.length === 0) {
@@ -573,7 +572,8 @@ async function validateSpanishConversion(url, debug = false) {
     const targetPage = await clickAndWaitForLanguagePage(page, linkHandle, debug);
     if (!targetPage) {
       result.linkValid = 'Invalid';
-      result.details = 'En Español link missing, hidden, disabled, or has no href';
+      // Accurate message for navigation failure
+      result.details = 'Click did not lead to navigation or content change';
       result.status = 'FAIL';
       return result;
     }
