@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NW Interstellar Angular NF API Testing - Comprehensive Help Guide</title>
+  <style>
+    :root {
+      --primary: #004B87;
+      --primary-dark: #003366;
+      --primary-light: #E8F1F8;
+      --accent: #00A3E0;
+      --success: #28a745;
+      --warning: #ffc107;
+      --danger: #dc3545;
+      --dark: #1E293B;
+      --light: #F8FAFC;
+      --border: #E2E8F0;
+      --text: #334155;
+      --text-muted: #64748B;
+      --sidebar-width: 280px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      color: var(--text);
+      background-color: #F1F5F9;
+      line-height: 1.6;
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar Navigation */
+    .sidebar {
+      width: var(--sidebar-width);
+      background: var(--dark);
+      color: #fff;
+      position: fixed;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      overflow-y: auto;
+      z-index: 100;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      padding: 24px 20px;
+      background: var(--primary-dark);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .sidebar-header h2 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .sidebar-header p {
+      font-size: 0.75rem;
+      color: #94A3B8;
+    }
+
+    .sidebar-search {
+      padding: 16px 20px 8px 20px;
+    }
+
+    .sidebar-search input {
+      width: 100%;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #0F172A;
+      color: #fff;
+      font-size: 0.85rem;
+      outline: none;
+    }
+
+    .sidebar-search input:focus {
+      border-color: var(--accent);
+    }
+
+    .sidebar-nav {
+      list-style: none;
+      padding: 12px 0;
+      flex-grow: 1;
+    }
+
+    .sidebar-nav li a {
+      display: flex;
+      align-items: center;
+      padding: 10px 20px;
+      color: #CBD5E1;
+      text-decoration: none;
+      font-size: 0.88rem;
+      transition: all 0.2s ease;
+      border-left: 3px solid transparent;
+    }
+
+    .sidebar-nav li a:hover, .sidebar-nav li a.active {
+      color: #fff;
+      background: rgba(255,255,255,0.08);
+      border-left-color: var(--accent);
+    }
+
+    .sidebar-nav .nav-icon {
+      margin-right: 10px;
+      font-size: 1rem;
+      width: 20px;
+      text-align: center;
+    }
+
+    .sidebar-footer {
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      font-size: 0.75rem;
+      color: #64748B;
+      text-align: center;
+    }
+
+    /* Main Content Area */
+    .main-content {
+      margin-left: var(--sidebar-width);
+      flex-grow: 1;
+      padding: 40px 48px;
+      max-width: 1200px;
+    }
+
+    /* Header & Hero Section */
+    .hero-banner {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 36px 40px;
+      margin-bottom: 36px;
+      box-shadow: 0 10px 25px -5px rgba(0, 75, 135, 0.25);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-banner h1 {
+      font-size: 2.2rem;
+      font-weight: 800;
+      margin-bottom: 12px;
+      letter-spacing: -0.5px;
+    }
+
+    .hero-banner p {
+      font-size: 1.05rem;
+      color: #E2E8F0;
+      max-width: 800px;
+      margin-bottom: 20px;
+    }
+
+    .badge-container {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      backdrop-filter: blur(4px);
+    }
+
+    .badge-success { background: rgba(40, 167, 69, 0.25); color: #81E6D9; border: 1px solid rgba(40, 167, 69, 0.4); }
+    .badge-info { background: rgba(0, 163, 224, 0.25); color: #90CDF4; border: 1px solid rgba(0, 163, 224, 0.4); }
+
+    /* Content Cards / Sections */
+    .card {
+      background: #fff;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      padding: 28px 32px;
+      margin-bottom: 32px;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      scroll-margin-top: 20px;
+    }
+
+    .card h2 {
+      font-size: 1.4rem;
+      color: var(--primary-dark);
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--primary-light);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card h3 {
+      font-size: 1.1rem;
+      color: var(--dark);
+      margin: 20px 0 10px 0;
+    }
+
+    p {
+      margin-bottom: 14px;
+      color: var(--text);
+    }
+
+    ul, ol {
+      margin-left: 24px;
+      margin-bottom: 16px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    /* Code Blocks and Inline Code */
+    code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+      font-size: 0.88em;
+      background-color: #F1F5F9;
+      color: #0F172A;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #E2E8F0;
+    }
+
+    .code-wrapper {
+      position: relative;
+      margin: 16px 0;
+    }
+
+    pre {
+      background-color: #0F172A;
+      color: #F8FAFC;
+      padding: 16px 20px;
+      border-radius: 8px;
+      overflow-x: auto;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    pre code {
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      border: none;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+
+    /* Grid Layouts */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 16px 0;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin: 16px 0;
+    }
+
+    .info-box {
+      background: var(--primary-light);
+      border-left: 4px solid var(--primary);
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+    }
+
+    .warning-box {
+      background: #FFFBEB;
+      border-left: 4px solid var(--warning);
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+      color: #78350F;
+    }
+
+    .success-box {
+      background: #F0FDF4;
+      border-left: 4px solid var(--success);
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+      margin: 16px 0;
+      color: #14532D;
+    }
+
+    /* Process Flow Visualizer */
+    .flow-step-container {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .flow-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      background: #F8FAFC;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      position: relative;
+    }
+
+    .flow-num {
+      background: var(--primary);
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .flow-body h4 {
+      font-size: 1rem;
+      color: var(--dark);
+      margin-bottom: 4px;
+    }
+
+    .flow-body p {
+      font-size: 0.88rem;
+      margin-bottom: 0;
+      color: var(--text-muted);
+    }
+
+    /* Data Tables */
+    .data-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.88rem;
+    }
+
+    .data-table th {
+      background: #F1F5F9;
+      color: var(--dark);
+      font-weight: 700;
+      text-align: left;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+    }
+
+    .data-table td {
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+    }
+
+    .data-table tr:nth-child(even) {
+      background: #FAF5FF;
+    }
+
+    .data-table tr:hover {
+      background: #F1F5F9;
+    }
+
+    /* Accordion FAQ */
+    .accordion {
+      margin: 16px 0;
+    }
+
+    .accordion-item {
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+
+    .accordion-header {
+      background: #F8FAFC;
+      padding: 14px 18px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+    }
+
+    .accordion-header:hover {
+      background: var(--primary-light);
+    }
+
+    .accordion-content {
+      padding: 16px 18px;
+      background: #fff;
+      border-top: 1px solid var(--border);
+      display: none;
+    }
+
+    .accordion-item.open .accordion-content {
+      display: block;
+    }
+
+    .accordion-item.open .accordion-header {
+      background: var(--primary-light);
+      color: var(--primary-dark);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 992px) {
+      .sidebar {
+        width: 100%;
+        height: auto;
+        position: relative;
+      }
+      .main-content {
+        margin-left: 0;
+        padding: 24px;
+      }
+      body {
+        flex-direction: column;
+      }
+      .grid-2, .grid-3 {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar Navigation -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>NW API Automation</h2>
+      <p>Angular NF API Testing Help Hub</p>
+    </div>
+
+    <div class="sidebar-search">
+      <input type="text" id="searchInput" placeholder="Search documentation..." onkeyup="filterDocs()">
+    </div>
+
+    <ul class="sidebar-nav">
+      <li><a href="#overview" class="active"><span class="nav-icon">📌</span> Overview & Purpose</a></li>
+      <li><a href="#installation"><span class="nav-icon">⚙️</span> Installation & Setup</a></li>
+      <li><a href="#structure"><span class="nav-icon">📁</span> Project Directory Structure</a></li>
+      <li><a href="#architecture"><span class="nav-icon">🔄</span> Architecture & Workflow</a></li>
+      <li><a href="#how-it-works"><span class="nav-icon">🧠</span> How It Works</a></li>
+      <li><a href="#ticker-data"><span class="nav-icon">📈</span> Ticker & Input Data Files</a></li>
+      <li><a href="#validation"><span class="nav-icon">✅</span> Validations & SLA Checks</a></li>
+      <li><a href="#execution"><span class="nav-icon">🚀</span> Execution Options & CLI</a></li>
+      <li><a href="#add-collection"><span class="nav-icon">➕</span> Adding New Collections</a></li>
+      <li><a href="#reports"><span class="nav-icon">📊</span> Reports & Dashboard Artifacts</a></li>
+      <li><a href="#email"><span class="nav-icon">📧</span> Email & SMTP Setup</a></li>
+      <li><a href="#scheduler"><span class="nav-icon">⏰</span> Task Scheduler Setup</a></li>
+      <li><a href="#troubleshooting"><span class="nav-icon">🔍</span> Troubleshooting & FAQ</a></li>
+    </ul>
+
+    <div class="sidebar-footer">
+      Nationwide API Automation Guide v1.0.0
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <main class="main-content">
+
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+      <h1>NW Interstellar Angular NF API Testing</h1>
+      <p>Comprehensive Help & Developer Documentation for Automated Postman API Collection Runner, Multi-Environment Support, Newman Reporter Integration, XLSX Generation, SMTP Email Delivery & Task Automation.</p>
+      
+      <div class="badge-container">
+        <span class="badge badge-success">✓ Production Ready</span>
+        <span class="badge badge-info">Node.js v16+</span>
+        <span class="badge badge-info">Newman v6.1+</span>
+        <span class="badge badge-info">PowerShell 5.1+</span>
+        <span class="badge">Windows Task Scheduler</span>
+      </div>
+    </div>
+
+    <!-- Section 1: Overview & Purpose -->
+    <section id="overview" class="card">
+      <h2>📌 1. Overview & Purpose</h2>
+      <p>The <strong>NW Interstellar Angular NF API Testing Framework</strong> is a complete enterprise automated testing tool designed to validate Nationwide Mutual Insurance / Financial Services <strong>Angular Nationwide Funds (NF) API endpoints</strong>.</p>
+
+      <p>It leverages <strong>Newman</strong> (Postman CLI runner) orchestrated via <strong>Node.js</strong> and <strong>PowerShell</strong> scripts to run multiple collection test suites against distinct API environments (<code>prod</code>, <code>dev</code>, <code>internal</code>), perform detailed assertions for data integrity, generate structured reports (HTML, JSON, XLSX, JUnit XML), and automatically deliver execution results via SMTP email.</p>
+
+      <div class="grid-3">
+        <div class="info-box">
+          <strong>⚡ Automated Runner</strong>
+          <p style="font-size: 0.85rem; margin-top: 6px;">Executes Postman collections iteratively using CSV ticker lists (e.g., fund tickers like AAF, GIF, etc.).</p>
+        </div>
+        <div class="info-box">
+          <strong>📊 Multi-Format Reporting</strong>
+          <p style="font-size: 0.85rem; margin-top: 6px;">Generates interactive HTML Extra reports, raw JSON execution states, Excel summary matrices, and JUnit XML.</p>
+        </div>
+        <div class="info-box">
+          <strong>📬 Instant Notifications</strong>
+          <p style="font-size: 0.85rem; margin-top: 6px;">Integrated SMTP relay automatically attaches HTML and XLSX reports to email recipients post-execution.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Installation & Setup -->
+    <section id="installation" class="card">
+      <h2>⚙️ 2. Installation & Prerequisites</h2>
+      <p>Follow these step-by-step instructions to set up the execution environment on a new machine or server.</p>
+
+      <h3>Prerequisites Checklist</h3>
+      <ul>
+        <li><strong>Operating System:</strong> Windows 10 / Windows Server 2016+ (or macOS/Linux with PowerShell core).</li>
+        <li><strong>Node.js Runtime:</strong> Version 16.x or higher (Download from <a href="https://nodejs.org" target="_blank">nodejs.org</a>).</li>
+        <li><strong>PowerShell:</strong> Version 5.1 or PowerShell Core 7+.</li>
+        <li><strong>Git / Access:</strong> Workspace repository cloned locally.</li>
+      </ul>
+
+      <h3>Step 1: Verify Node.js and NPM</h3>
+      <p>Open Terminal / PowerShell and run:</p>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>node --version
+npm --version</code></pre>
+      </div>
+
+      <h3>Step 2: Install Project Dependencies</h3>
+      <p>Navigate to the project root folder and execute <code>npm install</code> to install all required packages:</p>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>cd C:\NW_Testing\NW_Interstellar_Angular_NF_API_Testing
+npm install</code></pre>
+      </div>
+
+      <div class="info-box">
+        <strong>Package Manifest Details:</strong>
+        <p style="font-size: 0.85rem; margin-top: 4px;">The installation pulls the following key libraries from <code>package.json</code>:</p>
+        <ul style="font-size: 0.85rem; margin-bottom: 0;">
+          <li><code>newman</code> (^6.1.3) - Postman CLI runner engine</li>
+          <li><code>newman-reporter-htmlextra</code> (^1.23.1) - Interactive dark/light HTML report dashboard generator</li>
+          <li><code>xlsx</code> (^0.18.5) - Excel workbook generation for test result metrics</li>
+          <li><code>nodemailer</code> (^6.10.1) - SMTP email delivery engine</li>
+          <li><code>dotenv</code> (^17.4.2) - Environment file secrets manager</li>
+        </ul>
+      </div>
+
+      <h3>Step 3: Set PowerShell Execution Policy</h3>
+      <p>If executing PowerShell scripts, ensure script execution is permitted for your user session:</p>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code></pre>
+      </div>
+    </section>
+
+    <!-- Section 3: Project Structure -->
+    <section id="structure" class="card">
+      <h2>📁 3. Project Directory Structure</h2>
+      <p>An overview of the workspace folders and key scripts:</p>
+
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>NW_Interstellar_Angular_NF_API_Testing/
+├── package.json                            # Project dependencies & npm scripts
+├── ticker.csv                              # Primary CSV ticker data file for iterations
+├── run-fund-profile-api.bat               # Windows Batch launcher for scheduled execution
+├── TASK_SCHEDULER_SETUP.md                 # Detailed Task Scheduler setup guide
+├── HELP_GUIDE.html                         # Master documentation & interactive help guide
+├── collections/                            # Postman collection JSON files
+│   ├── asset-allocations.postman_collection.json
+│   ├── average-annual-returns.postman_collection.json
+│   ├── calendar-year-returns.postman_collection.json
+│   ├── charges-prod.postman_collection.json
+│   ├── continent-allocation.postman_collection.json
+│   ├── credit-quality.postman_collection.json
+│   ├── fund-highlights.postman_collection.json
+│   ├── fund-info.postman_collection.json
+│   ├── fund-profile-int-api.postman_collection.json
+│   ├── growth-of-10k.postman_collection.json
+│   ├── portfolio-characteristics.postman_collection.json
+│   ├── pricing-and-performance.postman_collection.json
+│   ├── rankings-ratings.postman_collection.json
+│   ├── sector-allocations.postman_collection.json
+│   └── style-details.postman_collection.json
+├── environments/                           # Postman Environment JSON files
+│   ├── fund-profile-api.postman_environment.json
+│   └── pricing-and-performance.postman_environment.json
+├── data/                                   # Data files for specific collection runs
+│   ├── fund-profile-api.tickers.json
+│   └── smoke.tickers.csv
+├── scripts/                                # Automation scripts
+│   ├── run-collection.js                   # Node.js master collection runner
+│   ├── generate-xlsx-report.js             # Parses Newman JSON & exports Excel spreadsheet
+│   ├── post-run-actions.ps1                # PowerShell email dispatch & post-run cleanup
+│   └── run-all-collections-scheduled.ps1  # Scheduler entry script for sequential collection execution
+├── reports/                                # Generated execution report outputs
+│   ├── newman-report-latest.html           # Interactive HTML extra dashboard
+│   ├── newman-summary-latest.json          # Standardized Newman execution summary
+│   ├── newman-response-codes-latest.csv    # Response code audit log
+│   ├── newman-junit-latest.xml             # JUnit XML report for CI/CD pipeline integration
+│   └── archive/                            # Archived timestamped historical reports
+└── NW_Interstellar_Angular_NF_API_Testing_new/ # Config-driven alternative runner structure
+    ├── config.json                         # Global environment & collection endpoints mapping
+    ├── runTests.js                         # Dynamic Node.js collection execution engine
+    └── reportTemplate.ejs                  # EJS template for customized HTML reports</code></pre>
+      </div>
+    </section>
+
+    <!-- Section 4: Architecture & Workflow -->
+    <section id="architecture" class="card">
+      <h2>🔄 4. Architecture & Workflow</h2>
+      <p>The framework follows an end-to-end automated pipeline lifecycle from trigger invocation down to report generation and email notification:</p>
+
+      <div class="flow-step-container">
+        <div class="flow-step">
+          <div class="flow-num">1</div>
+          <div class="flow-body">
+            <h4>Trigger Invocation</h4>
+            <p>Task Scheduler / Manual CLI triggers <code>run-fund-profile-api.bat</code> or <code>node scripts/run-collection.js</code>.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">2</div>
+          <div class="flow-body">
+            <h4>Configuration & Environment Initialization</h4>
+            <p>Parameters are resolved from CLI flags or <code>.env</code> file (e.g. <code>--env</code>, <code>--data ticker.csv</code>, <code>--smtp-enabled</code>).</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">3</div>
+          <div class="flow-body">
+            <h4>Postman Collection Execution (Newman)</h4>
+            <p>Newman executes requests against Nationwide API endpoints (e.g. <code>/funds-and-assets-management/fund-profile/v1/funds/{ticker}</code>) iterating over each row in <code>ticker.csv</code>.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">4</div>
+          <div class="flow-body">
+            <h4>Assertions & Data Quality Validation</h4>
+            <p>Validates Status Code 200, JSON Schema compliance, mandatory <code>data</code> element, null/empty checks, SLA response times (< 3000ms), and auth token exchanges.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">5</div>
+          <div class="flow-body">
+            <h4>Multi-Format Report Generation</h4>
+            <p>Generates <code>newman-report-latest.html</code>, raw JSON summaries, JUnit XML, and invokes <code>generate-xlsx-report.js</code> to output a comprehensive Excel spreadsheet.</p>
+          </div>
+        </div>
+
+        <div class="flow-step">
+          <div class="flow-num">6</div>
+          <div class="flow-body">
+            <h4>SMTP Email Dispatch & Cleanup</h4>
+            <p>Invokes <code>post-run-actions.ps1</code> or <code>nodemailer</code> to send an email summary with HTML & XLSX reports attached to configured stakeholders.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 5: How It Works -->
+    <section id="how-it-works" class="card">
+      <h2>🧠 5. How It Works</h2>
+      
+      <h3>1. Data Iteration via CSV Tickers</h3>
+      <p>When running fund profile collections, Newman uses <code>ticker.csv</code> (or <code>tickers/all_tickers.csv</code>) as an iteration data source. Each line contains a ticker identifier (e.g., <code>AAF</code>, <code>GIF</code>, <code>NWX</code>). Newman injects the variable into path variables like <code>{{ticker}}</code> for each iteration.</p>
+
+      <h3>2. OAuth / Morningstar Access Code Pre-Request Script</h3>
+      <p>For endpoints requiring authorization (such as <i>Pricing and Performance</i>), the Postman collection contains a pre-request script that executes an initial OAuth/Auth token exchange call to obtain a temporary access token before sending the target API request.</p>
+
+      <h3>3. Multi-Environment Switching</h3>
+      <p>The framework seamlessly targets different target environments via Postman environment files or <code>config.json</code>:</p>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Environment Key</th>
+            <th>Base URL</th>
+            <th>Default Headers / Auth</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>prod</code></td>
+            <td><code>https://api.nationwide.com</code></td>
+            <td><code>client_id</code>, <code>X-NW-Message-ID</code></td>
+          </tr>
+          <tr>
+            <td><code>dev</code></td>
+            <td><code>https://api-test.nwie.net</code></td>
+            <td>Dev client credentials & test headers</td>
+          </tr>
+          <tr>
+            <td><code>internal</code></td>
+            <td><code>https://api-int.nwie.net</code></td>
+            <td>Internal network routing headers</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>4. Response Body State Detection</h3>
+      <p>The reporting engine in <code>generate-xlsx-report.js</code> parses response bodies and detects specific data states:</p>
+      <ul>
+        <li><span class="badge badge-success">Valid Data</span> - Response body parsed successfully with non-null <code>data</code> content.</li>
+        <li><span class="badge badge-info">Empty / Null Data</span> - Valid HTTP 200 response, but <code>data: null</code> or empty array detected.</li>
+        <li><span class="badge" style="background:#dc3545; color:white;">Error / Fault</span> - HTTP 4xx/5xx status code or invalid JSON fault response.</li>
+      </ul>
+    </section>
+
+    <!-- Section 6: Ticker & Input Data Files Reference -->
+    <section id="ticker-data" class="card">
+      <h2>📈 6. Ticker & Input Data Files Reference (All Tickers)</h2>
+      <p>The framework relies on data-driven testing using CSV and JSON ticker files. Each row or object in a ticker file represents an iteration in Newman, injecting the <code>fundCode</code> or <code>ticker</code> variable into Postman endpoint path parameters like <code>/funds-and-assets-management/fund-profile/v1/funds/{fundCode}</code>.</p>
+
+      <h3>All Available Ticker Data Files</h3>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>File Path</th>
+            <th>Format</th>
+            <th>Ticker Count</th>
+            <th>Usage & Purpose</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>ticker.csv</code></td>
+            <td>CSV (Header: <code>fundCode</code>)</td>
+            <td><strong>49 Tickers</strong></td>
+            <td>Primary root dataset used by <code>run-fund-profile-api.bat</code> and default execution scripts for full regression suite runs.</td>
+          </tr>
+          <tr>
+            <td><code>data/fund-profile-api.tickers.json</code></td>
+            <td>JSON Array</td>
+            <td><strong>4 Tickers</strong></td>
+            <td>JSON formatted ticker set (<code>NWALX</code>, <code>NWAQX</code>, <code>NWXEX</code>, <code>GIIAX</code>) for targeted API tests.</td>
+          </tr>
+          <tr>
+            <td><code>data/smoke.tickers.csv</code></td>
+            <td>CSV (Header: <code>fundCode</code>)</td>
+            <td><strong>1 Ticker</strong></td>
+            <td>Lightweight single-ticker (<code>NMFAX</code>) dataset for quick smoke tests and pipeline validation.</td>
+          </tr>
+          <tr>
+            <td><code>NW_Interstellar_Angular_NF_API_Testing_new/tickers/all_tickers.csv</code></td>
+            <td>CSV</td>
+            <td><strong>1 Ticker</strong></td>
+            <td>Ticker dataset for the alternative config-driven runner structure.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Full List of Tickers in <code>ticker.csv</code> (Primary Suite - 49 Funds)</h3>
+      <p>The table below lists all 49 Nationwide fund tickers configured in <code>ticker.csv</code>:</p>
+
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>NMFAX, NWAEX, NGISX, GGFRX, MUIGX, NWALX, NWAPX, NWAOX, NWAMX, NWANX,
+NWHJX, NWHNX, NWHMX, NWHDX, NWHHX, NWHGX, NWHOX, NWHUX, NWHTX, GBIAX,
+NWXOX, GBXIX, NWIAX, NWISX, NWBIX, NWIIX, NWLAX, NWLSX, NWLBX, NWLIX,
+NWMAX, NWMSX, NWMDX, NWMHX, NWNAX, NWNSX, NWNBX, NWNIX, NWOAX, NWOSX,
+NWOBX, NWOIX, NTDAX, NTDSX, NTDTX, NTDIX, NWWRX, NWWVX, NWWTX</code></pre>
+      </div>
+
+      <h3>Structure Examples</h3>
+      <div class="grid-2">
+        <div>
+          <h4>CSV Format Structure (e.g., <code>ticker.csv</code>)</h4>
+          <div class="code-wrapper">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <pre><code>fundCode
+NMFAX
+NWAEX
+NGISX
+GGFRX
+MUIGX
+...</code></pre>
+          </div>
+        </div>
+        <div>
+          <h4>JSON Format Structure (e.g., <code>fund-profile-api.tickers.json</code>)</h4>
+          <div class="code-wrapper">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <pre><code>[
+  { "fundCode": "NWALX" },
+  { "fundCode": "NWAQX" },
+  { "fundCode": "NWXEX" },
+  { "fundCode": "GIIAX" }
+]</code></pre>
+          </div>
+        </div>
+      </div>
+
+      <h3>How to Switch or Specify Ticker Data Files</h3>
+      <p>You can switch the input ticker file during execution using any of the following methods:</p>
+
+      <ul>
+        <li><strong>Via Node.js CLI:</strong> Pass <code>--data &lt;filepath&gt;</code> to the runner script:
+          <div class="code-wrapper">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <pre><code># Run full regression (49 tickers)
+node scripts/run-collection.js --data ticker.csv
+
+# Run JSON ticker dataset
+node scripts/run-collection.js --data data/fund-profile-api.tickers.json
+
+# Run smoke test dataset
+node scripts/run-collection.js --data data/smoke.tickers.csv</code></pre>
+          </div>
+        </li>
+        <li><strong>Via Batch File (<code>run-fund-profile-api.bat</code>):</strong> Change the <code>-DataFile</code> parameter in the batch launcher:
+          <div class="code-wrapper">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <pre><code>powershell -File "%~dp0scripts\run-all-collections-scheduled.ps1" -DataFile "ticker.csv"</code></pre>
+          </div>
+        </li>
+        <li><strong>Via Config File (<code>config.json</code>):</strong> In <code>NW_Interstellar_Angular_NF_API_Testing_new/config.json</code>, update the <code>tickerFile</code> path per collection:
+          <div class="code-wrapper">
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+            <pre><code>"collections": [
+  {
+    "name": "Fund Profile",
+    "endpoint": "/funds-and-assets-management/fund-profile/v1/funds/{ticker}",
+    "tickerFile": "tickers/all_tickers.csv"
+  }
+]</code></pre>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Section 7: Validations & Quality Checks -->
+    <section id="validation" class="card">
+      <h2>✅ 7. Validations & SLA Checks</h2>
+      <p>The collections incorporate robust Postman tests to ensure API reliability, structural compliance, and performance SLA standard adherence:</p>
+
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>// Sample Postman Test Suite in Collections
+pm.test("Status code is 200 OK", function () {
+    pm.response.to.have.status(200);
+});
+
+pm.test("Response time is within SLA (< 3000ms)", function () {
+    pm.expect(pm.response.responseTime).to.be.below(3000);
+});
+
+pm.test("Response contains required 'data' property", function () {
+    var jsonData = pm.response.json();
+    pm.expect(jsonData).to.have.property('data');
+    pm.expect(jsonData.data).to.not.be.null;
+});
+
+pm.test("Content-Type header is JSON", function () {
+    pm.response.to.have.header("Content-Type");
+    pm.expect(pm.response.headers.get("Content-Type")).to.include("application/json");
+});</code></pre>
+      </div>
+
+      <div class="success-box">
+        <strong>Validation Matrix Overview:</strong>
+        <p style="margin-top: 4px; font-size: 0.88rem;">If any test assertion fails (e.g., HTTP 500 error or response time > 3000ms), Newman records a failure assertion, sets a non-zero exit code, and flags the failure in both HTML and Excel report outputs.</p>
+      </div>
+    </section>
+
+    <!-- Section 8: Execution Options & CLI -->
+    <section id="execution" class="card">
+      <h2>🚀 8. Execution Options & CLI Help</h2>
+
+      <h3>Standard NPM Commands</h3>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code># Default collection run via run-collection.js
+npm run api:run
+
+# Specific Fund Profile collection execution with default CSV
+npm run api:run:fund-profile</code></pre>
+      </div>
+
+      <h3>Node.js Direct CLI Arguments</h3>
+      <p>You can pass custom arguments to <code>scripts/run-collection.js</code>:</p>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>node scripts/run-collection.js \
+  --collection collections/fund-profile-api.postman_collection.json \
+  --env environments/fund-profile-api.postman_environment.json \
+  --data ticker.csv \
+  --insecure true \
+  --smtp-enabled true \
+  --smtp-host mail-gw.ent.nwie.net \
+  --smtp-to gunasb@nationwide.com</code></pre>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Flag / Parameter</th>
+            <th>Type</th>
+            <th>Description & Default</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>--collection</code></td>
+            <td>String</td>
+            <td>Path to Postman collection JSON file.</td>
+          </tr>
+          <tr>
+            <td><code>--env</code></td>
+            <td>String</td>
+            <td>Path to Postman environment JSON file.</td>
+          </tr>
+          <tr>
+            <td><code>--data</code></td>
+            <td>String</td>
+            <td>Path to iteration data CSV or JSON file (e.g. <code>ticker.csv</code>).</td>
+          </tr>
+          <tr>
+            <td><code>--insecure</code></td>
+            <td>Boolean</td>
+            <td>Bypasses SSL/TLS certificate verification when true.</td>
+          </tr>
+          <tr>
+            <td><code>--smtp-enabled</code></td>
+            <td>Boolean</td>
+            <td>Enables SMTP email sending post-run (Default: false).</td>
+          </tr>
+          <tr>
+            <td><code>--smtp-host</code></td>
+            <td>String</td>
+            <td>SMTP relay server hostname (e.g. <code>mail-gw.ent.nwie.net</code>).</td>
+          </tr>
+          <tr>
+            <td><code>--smtp-to</code></td>
+            <td>String</td>
+            <td>Recipient email address(es), separated by comma or semicolon.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>Alternative Dynamic Runner (NW_Interstellar_Angular_NF_API_Testing_new)</h3>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code># Run against production
+node runTests.js --env prod
+
+# Run against dev or internal
+node runTests.js --env dev
+node runTests.js --env internal
+
+# Execute Windows Batch script for all environments
+run-all-envs.bat</code></pre>
+      </div>
+    </section>
+
+    <!-- Section 9: Adding New Postman Collections (Future Expansion) -->
+    <section id="add-collection" class="card">
+      <h2>➕ 9. How to Add New Collections in the Future</h2>
+      <p>When new Nationwide API endpoints or fund features are developed, follow this step-by-step guide to add and integrate a new Postman collection into the framework:</p>
+
+      <h3>Step 1: Export Postman Collection File</h3>
+      <ol>
+        <li>Open Postman and locate your new API collection.</li>
+        <li>Right-click the collection name &rarr; click <strong>Export</strong>.</li>
+        <li>Select <strong>Collection v2.1 (recommended)</strong> format.</li>
+        <li>Save the <code>.json</code> file into the project's <code>collections/</code> directory (e.g. <code>collections/new-fund-feature.postman_collection.json</code>).</li>
+      </ol>
+
+      <h3>Step 2: Ensure Path Variable Standardization</h3>
+      <p>Make sure requests in the Postman collection use parameterized URL variables matching your ticker data CSV/JSON fields:</p>
+      <ul>
+        <li>For path variables: <code>https://{{baseUrl}}/funds-and-assets-management/fund-profile/v1/funds/{{fundCode}}/new-feature</code> or <code>{{ticker}}</code></li>
+        <li>For standard headers: Include <code>client_id</code> and <code>X-NW-Message-ID</code> header variables.</li>
+      </ul>
+
+      <h3>Step 3: Integrate and Run the New Collection</h3>
+      <p>Depending on which runner mode you use, follow the corresponding method below:</p>
+
+      <h4>Method A: Direct Script & NPM Script Execution</h4>
+      <p>Execute the new collection individually using <code>run-collection.js</code>:</p>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>node scripts/run-collection.js \
+  --collection collections/new-fund-feature.postman_collection.json \
+  --env environments/fund-profile-api.postman_environment.json \
+  --data ticker.csv \
+  --insecure true</code></pre>
+      </div>
+      <p>Optionally add a shortcut to <code>package.json</code> under <code>"scripts"</code>:</p>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>"scripts": {
+  "api:run:new-feature": "node scripts/run-collection.js --collection collections/new-fund-feature.postman_collection.json --env environments/fund-profile-api.postman_environment.json --data ticker.csv --insecure true"
+}</code></pre>
+      </div>
+
+      <h4>Method B: Add to Config-Driven Runner (<code>NW_Interstellar_Angular_NF_API_Testing_new/config.json</code>)</h4>
+      <p>Open <code>config.json</code> and append your new endpoint definition to the <code>"collections"</code> array:</p>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>{
+  "name": "New Fund Feature",
+  "endpoint": "/funds-and-assets-management/fund-profile/v1/funds/{ticker}/new-feature",
+  "method": "GET",
+  "tickerFile": "tickers/all_tickers.csv",
+  "validationRules": {
+    "expectedStatus": 200,
+    "requiredFields": ["data"],
+    "checkEmptyData": false
+  }
+}</code></pre>
+      </div>
+      <p>Run via <code>node runTests.js --env prod</code>.</p>
+
+      <h4>Method C: Include in Automated Scheduled Batch Runs</h4>
+      <p>If using the scheduled batch runner (`run-fund-profile-api.bat`), open `scripts/run-all-collections-scheduled.ps1` and add the new collection JSON file path to the collection execution loop array so it executes automatically during scheduled jobs.</p>
+
+      <div class="success-box">
+        <strong>Report Verification:</strong>
+        <p style="margin-top:4px; font-size:0.88rem;">Once executed, verify that results for your new collection appear in <code>reports/newman-report-latest.html</code> and <code>reports/newman-summary-latest.xlsx</code>.</p>
+      </div>
+    </section>
+
+    <!-- Section 10: Reports & Dashboard Artifacts -->
+    <section id="reports" class="card">
+      <h2>📊 10. Reports & Dashboard Artifacts</h2>
+      <p>When an execution finishes, all report artifacts are generated in the <code>reports/</code> folder:</p>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Report Artifact</th>
+            <th>File Path</th>
+            <th>Purpose & Content</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>HTML Extra Dashboard</strong></td>
+            <td><code>reports/newman-report-latest.html</code></td>
+            <td>Interactive, visually styled HTML dashboard showing total requests, assertions, request/response headers, payloads, and execution durations.</td>
+          </tr>
+          <tr>
+            <td><strong>Excel Workbook</strong></td>
+            <td><code>reports/newman-summary-latest.xlsx</code></td>
+            <td>Formatted Excel spreadsheet categorizing responses, error codes, and empty data states per ticker.</td>
+          </tr>
+          <tr>
+            <td><strong>JSON Execution Summary</strong></td>
+            <td><code>reports/newman-summary-latest.json</code></td>
+            <td>Structured machine-readable JSON representation of all Newman execution assertions and metrics.</td>
+          </tr>
+          <tr>
+            <td><strong>JUnit XML</strong></td>
+            <td><code>reports/newman-junit-latest.xml</code></td>
+            <td>Standardized XML file suitable for importing into Azure DevOps, Jenkins, or Jira test boards.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Section 11: Email Setup -->
+    <section id="email" class="card">
+      <h2>📧 11. Email & SMTP Configuration</h2>
+      <p>The framework supports automatic email delivery via standard Windows Batch variables, <code>.env</code> file, or <code>config.json</code>.</p>
+
+      <h3>Configuring Environment Variables</h3>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>set SMTP_ENABLED=true
+set SMTP_HOST=mail-gw.ent.nwie.net
+set SMTP_PORT=25
+set SMTP_FROM=gunasb@nationwide.com
+set SMTP_TO=gunasb@nationwide.com
+set SMTP_SSL=false
+set SMTP_SUBJECT_PREFIX=[NW API Automation]</code></pre>
+      </div>
+
+      <div class="warning-box">
+        <strong>Corporate Relay Note:</strong>
+        <p style="margin-top: 4px; font-size: 0.88rem;">When running inside the Nationwide internal network, the SMTP host <code>mail-gw.ent.nwie.net</code> on Port 25 does not require username/password authentication. If testing externally, populate <code>SMTP_USER</code> and <code>SMTP_PASS</code>.</p>
+      </div>
+    </section>
+
+    <!-- Section 12: Task Scheduler Setup -->
+    <section id="scheduler" class="card">
+      <h2>⏰ 12. Windows Task Scheduler Setup</h2>
+
+      <h3>Option 1: Using Windows GUI</h3>
+      <ol>
+        <li>Press <code>Win + R</code>, type <code>taskschd.msc</code>, and press Enter.</li>
+        <li>In the right pane, click <strong>Create Task...</strong></li>
+        <li><strong>General Tab:</strong> Name the task <code>Angular_NF_API_Testing - Fund Profile API</code> and check <strong>"Run with highest privileges"</strong>.</li>
+        <li><strong>Triggers Tab:</strong> Click <i>New...</i> &rarr; Set schedule (e.g. Daily at 2:00 AM or Weekly on Mondays).</li>
+        <li><strong>Actions Tab:</strong> Click <i>New...</i> &rarr;
+          <ul>
+            <li><strong>Program/script:</strong> <code>C:\NW_Testing\NW_Interstellar_Angular_NF_API_Testing\run-fund-profile-api.bat</code></li>
+            <li><strong>Start in:</strong> <code>C:\NW_Testing\NW_Interstellar_Angular_NF_API_Testing</code></li>
+          </ul>
+        </li>
+        <li>Click <strong>OK</strong> and enter Windows credentials if prompted.</li>
+      </ol>
+
+      <h3>Option 2: Using Automated PowerShell Script</h3>
+      <p>Open PowerShell as Administrator and execute:</p>
+      <div class="code-wrapper">
+        <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+        <pre><code>$TaskName = "Angular_NF_API_Testing - Fund Profile API"
+$BatchPath = "C:\NW_Testing\NW_Interstellar_Angular_NF_API_Testing\run-fund-profile-api.bat"
+$WorkDir   = "C:\NW_Testing\NW_Interstellar_Angular_NF_API_Testing"
+
+# Trigger: Daily at 2:00 AM
+$Trigger = New-ScheduledTaskTrigger -Daily -At 2:00AM
+
+# Action & Settings
+$Action = New-ScheduledTaskAction -Execute $BatchPath -WorkingDirectory $WorkDir
+$Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+
+Register-ScheduledTask -TaskName $TaskName -Trigger $Trigger -Action $Action -Settings $Settings -RunLevel Highest
+Write-Host "✓ Scheduled Task Registered Successfully!"</code></pre>
+      </div>
+    </section>
+
+    <!-- Section 13: Troubleshooting & FAQ -->
+    <section id="troubleshooting" class="card">
+      <h2>🔍 13. Troubleshooting & FAQ</h2>
+
+      <div class="accordion">
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>❓ 'node' or 'newman' is not recognized as an internal or external command</span>
+            <span>▼</span>
+          </div>
+          <div class="accordion-content">
+            <p><strong>Cause:</strong> Node.js is not installed or the executable path is missing from your system <code>PATH</code> variable.</p>
+            <p><strong>Fix:</strong> Install Node.js v16+ from <a href="https://nodejs.org" target="_blank">nodejs.org</a>, restart your terminal session, and verify with <code>node -v</code>.</p>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>❓ SSL Certificate Verification Errors (DEPTH_ZERO_SELF_SIGNED_CERT)</span>
+            <span>▼</span>
+          </div>
+          <div class="accordion-content">
+            <p><strong>Cause:</strong> Corporate SSL proxies/firewalls intercepting HTTPS requests.</p>
+            <p><strong>Fix:</strong> Pass the <code>--insecure true</code> flag to <code>run-collection.js</code> or set <code>NODE_TLS_REJECT_UNAUTHORIZED=0</code> in your environment.</p>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>❓ SMTP Mail Fails to Send (Connection Timeout / ECONNREFUSED)</span>
+            <span>▼</span>
+          </div>
+          <div class="accordion-content">
+            <p><strong>Cause:</strong> Incorrect SMTP host or firewall blocking port 25/587.</p>
+            <p><strong>Fix:</strong> Verify <code>SMTP_HOST=mail-gw.ent.nwie.net</code> when inside Nationwide corporate network. Ensure port 25 is accessible via <code>Test-NetConnection mail-gw.ent.nwie.net -Port 25</code> in PowerShell.</p>
+          </div>
+        </div>
+
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>❓ PowerShell Script Execution Blocked ("cannot be loaded because running scripts is disabled")</span>
+            <span>▼</span>
+          </div>
+          <div class="accordion-content">
+            <p><strong>Cause:</strong> Restricted PowerShell execution policy.</p>
+            <p><strong>Fix:</strong> Run <code>Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser</code> in PowerShell.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // Copy code button handler
+    function copyCode(button) {
+      const codeBlock = button.nextElementSibling.querySelector('code');
+      const text = codeBlock.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        button.innerText = 'Copied!';
+        button.style.background = '#28a745';
+        setTimeout(() => {
+          button.innerText = 'Copy';
+          button.style.background = 'rgba(255,255,255,0.1)';
+        }, 2000);
+      });
+    }
+
+    // Toggle FAQ Accordion
+    function toggleAccordion(header) {
+      const item = header.parentElement;
+      item.classList.toggle('open');
+    }
+
+    // Filter documentation sections via search input
+    function filterDocs() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const cards = document.querySelectorAll('.card');
+      
+      cards.forEach(card => {
+        const text = card.innerText.toLowerCase();
+        if (text.includes(query)) {
+          card.style.display = 'block';
+        } else {
+          card.style.display = 'none';
+        }
+      });
+    }
+
+    // Highlight active link in sidebar on scroll
+    window.addEventListener('scroll', () => {
+      const sections = document.querySelectorAll('.card');
+      const navLinks = document.querySelectorAll('.sidebar-nav li a');
+      
+      let currentSection = '';
+      sections.forEach(section => {
+        const sectionTop = section.offsetTop - 100;
+        if (window.scrollY >= sectionTop) {
+          currentSection = section.getAttribute('id');
+        }
+      });
+
+      navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + currentSection) {
+          link.classList.add('active');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
