@@ -1,1 +1,36 @@
 https://mutualfunds.nationwide.com/iApp/mfws/fundInfo/activeFunds
+
+
+{
+  "info": {
+    "name": "Fundlist API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "fundlist-api-001"
+  },
+  "item": [
+    {
+      "name": "Fundlist",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "body": {
+          "mode": "raw",
+          "raw": ""
+        },
+        "url": {
+          "raw": "https://mutualfunds.nationwide.com/iApp/mfws/fundInfo/activeFunds",
+          "protocol": "https",
+          "host": [
+            "mutualfunds.nationwide.com",
+            "iApp",
+            "mfws",
+            "fundInfo",
+            "activeFunds"
+          ],
+          "query": []
+        }
+      },
+      "response": []
+    }
+  ]
+}
